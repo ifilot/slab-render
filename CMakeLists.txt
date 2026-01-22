@@ -36,7 +36,7 @@ find_package(glm REQUIRED)
 # --------------------
 # Sources
 # --------------------
-add_executable(slabrender
+add_executable(slabrender WIN32
     src/atom.cpp
     src/atom_settings.cpp
     src/bond.cpp
