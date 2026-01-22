@@ -9,7 +9,7 @@ BUILD_DIR="build-windows"
 DIST_DIR="dist"
 INSTALLER_DIR="installer"
 
-echo "==> Packaging ${APP_NAME} (Windows / MinGW / Qt6)"
+echo "==> Packaging ${APP_NAME} (Windows / MinGW / Qt5)"
 
 # ------------------------------------------------------------
 # Clean previous build
@@ -38,18 +38,18 @@ echo "==> Copying executable"
 cp "${BUILD_DIR}/${APP_NAME}.exe" "${DIST_DIR}/"
 
 # Provide qmake.exe for windeployqt (MSYS2 requirement)
-QMAKE_QT5="$MINGW_PREFIX/bin/qmake-qt6.exe"
+QMAKE_QT5="$MINGW_PREFIX/bin/qmake-qt5.exe"
 QMAKE_SHIM="$MINGW_PREFIX/bin/qmake.exe"
 if [[ ! -x "$QMAKE_SHIM" ]]; then
   echo "[INFO] Creating qmake.exe shim"
-  ln -s qmake-qt6.exe "$QMAKE_SHIM" 2>/dev/null || cp "$QMAKE_QT6" "$QMAKE_SHIM"
+  ln -s qmake-qt5.exe "$QMAKE_SHIM" 2>/dev/null || cp "$QMAKE_QT5" "$QMAKE_SHIM"
 fi
 
 # ------------------------------------------------------------
 # Deploy Qt runtime
 # ------------------------------------------------------------
 echo "==> Running windeployqt"
-windeployqt-qt6 \
+windeployqt-qt5 \
   --release \
   --no-translations \
   --no-compiler-runtime \
