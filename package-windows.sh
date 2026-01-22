@@ -4,7 +4,7 @@ set -euo pipefail
 # ------------------------------------------------------------
 # Configuration
 # ------------------------------------------------------------
-APP_NAME="slab-render"        # <-- change if you rename later
+APP_NAME="slabrender"
 BUILD_DIR="build-windows"
 DIST_DIR="dist"
 INSTALLER_DIR="installer"
