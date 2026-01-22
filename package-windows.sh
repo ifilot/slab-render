@@ -58,8 +58,6 @@ windeployqt-qt5 \
 # ------------------------------------------------------------
 # Optional: strip binary (smaller installer)
 # ------------------------------------------------------------
-strip "${DIST_DIR}/${APP_NAME}.exe" || true
-
 ldd "${DIST_DIR}/${APP_NAME}" | awk '{print $3}' | while read -r path; do
   case "$path" in
     /mingw64/bin/*.dll)
