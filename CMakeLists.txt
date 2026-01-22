@@ -16,7 +16,7 @@ set(CMAKE_AUTORCC ON)
 # Qt (Qt5 or Qt6)
 # --------------------
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Core Gui Widgets OpenGL)
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Gui Widgets OpenGL)
+find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Gui Widgets OpenGL OpenGLWidgets)
 
 # --------------------
 # Dependencies
@@ -106,6 +106,7 @@ target_link_libraries(slabrender PRIVATE
     Qt${QT_VERSION_MAJOR}::Gui
     Qt${QT_VERSION_MAJOR}::Widgets
     Qt${QT_VERSION_MAJOR}::OpenGL
+    Qt${QT_VERSION_MAJOR}::OpenGLWidgets
     Boost::filesystem
     Boost::regex
     Boost::iostreams
