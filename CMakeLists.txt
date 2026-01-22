@@ -1,5 +1,4 @@
 cmake_minimum_required(VERSION 3.16)
-cmake_policy(SET CMP0167 NEW)
 
 project(slabrender LANGUAGES CXX)
 
@@ -13,10 +12,14 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 
 # --------------------
-# Qt (Qt5 or Qt6)
+# Qt5
 # --------------------
-find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Core Gui Widgets)
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Gui Widgets)
+find_package(Qt5 REQUIRED COMPONENTS
+    Core
+    Gui
+    Widgets
+    OpenGL
+)
 
 # --------------------
 # Dependencies
@@ -33,7 +36,7 @@ find_package(glm REQUIRED)
 # --------------------
 # Sources
 # --------------------
-set(SOURCES
+add_executable(slabrender WIN32
     src/atom.cpp
     src/atom_settings.cpp
     src/bond.cpp
@@ -51,9 +54,7 @@ set(SOURCES
     src/visualization/primitivebuilder.cpp
     src/visualization/shader_program.cpp
     src/visualization/shader_program_manager.cpp
-)
 
-set(HEADERS
     src/atom.h
     src/atom_settings.h
     src/bond.h
@@ -78,17 +79,12 @@ set(HEADERS
 # --------------------
 # Qt resources
 # --------------------
-qt_add_resources(RESOURCES resources.qrc)
+qt5_add_resources(RESOURCES resources.qrc)
+target_sources(slabrender PRIVATE ${RESOURCES})
 
 # --------------------
-# Executable
+# Compile definitions
 # --------------------
-add_executable(slabrender
-    ${SOURCES}
-    ${HEADERS}
-    ${RESOURCES}
-)
-
 target_compile_definitions(slabrender PRIVATE
     BOOST_BIND_GLOBAL_PLACEHOLDERS
 )
@@ -102,9 +98,10 @@ target_include_directories(slabrender PRIVATE src)
 # Link libraries
 # --------------------
 target_link_libraries(slabrender PRIVATE
-    Qt${QT_VERSION_MAJOR}::Core
-    Qt${QT_VERSION_MAJOR}::Gui
-    Qt${QT_VERSION_MAJOR}::Widgets
+    Qt5::Core
+    Qt5::Gui
+    Qt5::Widgets
+    Qt5::OpenGL
     Boost::filesystem
     Boost::regex
     Boost::iostreams
@@ -113,19 +110,14 @@ target_link_libraries(slabrender PRIVATE
 )
 
 # --------------------
-# Windows-specific fixes (MinGW)
+# Windows-specific
 # --------------------
 if (MINGW)
-    target_link_libraries(slabrender PRIVATE
-        ws2_32
-        bcrypt
-    )
+    target_link_libraries(slabrender PRIVATE ws2_32 bcrypt)
 endif()
 
 if (WIN32)
-    target_sources(slabrender PRIVATE
-        slabrender.rc
-    )
+    target_sources(slabrender PRIVATE slabrender.rc)
 endif()
 
 # --------------------

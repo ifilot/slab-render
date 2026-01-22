@@ -1,0 +1,148 @@
+name: CI
+
+on:
+  push:
+    branches: [ "**" ]
+    tags: [ "v*" ]
+  pull_request:
+
+jobs:
+  # ==========================================================
+  # Linux build (Qt 6 + Boost)
+  # ==========================================================
+  linux:
+    name: Linux (Ubuntu)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y \
+            build-essential \
+            cmake \
+            qtbase5-dev \
+            qtbase5-dev-tools \
+            libqt5opengl5-dev \
+            libboost-all-dev \
+            libeigen3-dev \
+            libfreetype-dev \
+            libglm-dev
+
+      - name: Configure
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: |
+          cmake --build build --parallel
+
+      - name: Test
+        run: |
+          cd build
+          ctest --output-on-failure
+
+  # ==========================================================
+  # Windows build + installer (MSYS2 MinGW64)
+  # ==========================================================
+  windows-mingw:
+    name: Windows (MSYS2 MinGW64)
+    runs-on: windows-latest
+
+    defaults:
+      run:
+        shell: msys2 {0}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # --------------------------------------------------------
+      # MSYS2 + MinGW toolchain
+      # --------------------------------------------------------
+      - name: Setup MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          path-type: inherit
+          install: >-
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-cmake
+            mingw-w64-x86_64-ninja
+            mingw-w64-x86_64-qt5-base
+            mingw-w64-x86_64-qt5-tools
+            mingw-w64-x86_64-boost
+            mingw-w64-x86_64-eigen3
+            mingw-w64-x86_64-glm
+            mingw-w64-x86_64-mesa
+            mingw-w64-x86_64-nsis
+
+      # --------------------------------------------------------
+      # Debug: ensure windeployqt exists
+      # --------------------------------------------------------
+      - name: List Qt deploy tools
+        run: |
+          ls /mingw64/bin/windeployqt*
+
+      # --------------------------------------------------------
+      # Build & package (delegated to script)
+      # --------------------------------------------------------
+      - name: Build & Package (Windows)
+        run: |
+          chmod +x ./package-windows.sh
+          ./package-windows.sh
+
+      # --------------------------------------------------------
+      # Always keep installer as artifact
+      # --------------------------------------------------------
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: |
+            *.exe
+
+      # ========================================================
+      # 🚀 Deploy on version tags only
+      # ========================================================
+      - name: Install AWS CLI (Windows)
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: powershell
+        run: |
+          Invoke-WebRequest `
+            https://awscli.amazonaws.com/AWSCLIV2.msi `
+            -OutFile AWSCLIV2.msi
+          Start-Process msiexec.exe `
+            -Wait `
+            -ArgumentList '/i AWSCLIV2.msi /quiet'
+          Remove-Item AWSCLIV2.msi
+
+      - name: Upload installer to R2
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: powershell
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+        run: |
+          $version = "${{ github.ref_name }}".Substring(1)
+
+          $installer = Get-ChildItem *.exe | Where-Object {
+            $_.Name -match $version
+          } | Select-Object -First 1
+
+          if (-not $installer) {
+            Write-Error "Installer for version $version not found"
+            exit 1
+          }
+
+          aws s3 cp `
+            $installer.FullName `
+            "s3://$env:R2_BUCKET/$($installer.Name)" `
+            --endpoint-url $env:R2_ENDPOINT
