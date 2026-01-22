@@ -25,7 +25,7 @@ RequestExecutionLevel admin
 ; -----------------------------------------
 ; Installer icon
 ; -----------------------------------------
-Icon "../assets/icons/slabrender.ico"
+Icon "assets/icons/slabrender.ico"
 
 ; -----------------------------------------
 ; UI pages
