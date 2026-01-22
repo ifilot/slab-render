@@ -1,13 +1,13 @@
-# Saucepan
+# SlabRender
 
 ## Purpose
-Saucepan is a (hopefully) intuitive GUI to automatically produce molecular structures
+SlabRender is a (hopefully) intuitive GUI to automatically produce molecular structures
 in Blender derived from VASP, ADF, or Gaussian type calculations.
 
-**Saucepan has been tested for Blender 3.3 LTS**
+**SlabRender has been tested for Blender 3.3 LTS**
 
 ## Usage
-Select a type of file from the dropdown menu. Next, select a root folder. Saucepan will
+Select a type of file from the dropdown menu. Next, select a root folder. SlabRender will
 aim to automatically grab all files in all folders. When you are satisfied with the list,
 you can either select a single file and produce an image for that file or produce images
 for all the files in the queue.
