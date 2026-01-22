@@ -51,6 +51,8 @@ fi
 echo "==> Running windeployqt"
 windeployqt-qt5 \
   --release \
+  --no-angle \
+  --no-opengl-sw \
   --no-translations \
   --no-compiler-runtime \
   "${DIST_DIR}/${APP_NAME}.exe"
