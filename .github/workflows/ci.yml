@@ -26,11 +26,11 @@ jobs:
             cmake \
             qt6-base-dev \
             qt6-base-dev-tools \
+            qt6-opengl-dev \
             libboost-all-dev \
             libeigen3-dev \
             libfreetype-dev \
-            libglm-dev \
-            nlohmann-json3-dev
+            libglm-dev
 
       - name: Configure
         run: |
