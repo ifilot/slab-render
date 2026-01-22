@@ -105,7 +105,7 @@ target_link_libraries(slabrender PRIVATE
     Qt${QT_VERSION_MAJOR}::Core
     Qt${QT_VERSION_MAJOR}::Gui
     Qt${QT_VERSION_MAJOR}::Widgets
-    Qt${QT_VERSION_MAJOR}::OpenGLWidgets
+    Qt${QT_VERSION_MAJOR}::OpenGL
     Boost::filesystem
     Boost::regex
     Boost::iostreams
