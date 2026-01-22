@@ -46,10 +46,10 @@ jobs:
           ctest --output-on-failure
 
   # ==========================================================
-  # Windows build + installer (MSYS2 MinGW64, Qt 6, Boost)
+  # Windows build + installer (MSYS2 MinGW64)
   # ==========================================================
   windows-mingw:
-    name: Windows (MSYS2 MinGW64, Qt 6)
+    name: Windows (MSYS2 MinGW64)
     runs-on: windows-latest
 
     defaults:
