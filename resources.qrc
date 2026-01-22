@@ -1,0 +1,35 @@
+<RCC>
+    <qresource prefix="/">
+        <file>assets/blender/axes_template.blend</file>
+        <file>assets/blender/rendertest.py</file>
+        <file>assets/blender/render_image.py</file>
+        <file>assets/icons/slabrender.png</file>
+        <file>assets/icons/slabrender.ico</file>
+        <file>assets/icons/image.png</file>
+        <file>assets/icons/processor.png</file>
+        <file>assets/icons/space_invader.png</file>
+        <file>assets/configuration/atoms.json</file>
+        <file>assets/blender/probe_cards.py</file>
+        <file>assets/icons/info.png</file>
+        <file>assets/tooltips/custom_json_example.txt</file>
+        <file>assets/models/arrow.obj</file>
+        <file>assets/shaders/axes.fs</file>
+        <file>assets/shaders/axes.vs</file>
+        <file>assets/shaders/diffuse.fs</file>
+        <file>assets/shaders/diffuse.vs</file>
+        <file>assets/shaders/line.fs</file>
+        <file>assets/shaders/line.vs</file>
+        <file>assets/shaders/phong.fs</file>
+        <file>assets/shaders/phong.vs</file>
+        <file>assets/shaders/stereo.vs</file>
+        <file>assets/shaders/stereo_anaglyph_red_cyan.fs</file>
+        <file>assets/shaders/stereo_interlaced_checkerboard_lr.fs</file>
+        <file>assets/shaders/stereo_interlaced_checkerboard_rl.fs</file>
+        <file>assets/shaders/stereo_interlaced_columns_lr.fs</file>
+        <file>assets/shaders/stereo_interlaced_columns_rl.fs</file>
+        <file>assets/shaders/stereo_interlaced_rows_lr.fs</file>
+        <file>assets/shaders/stereo_interlaced_rows_rl.fs</file>
+        <file>assets/icons/queue.png</file>
+        <file>assets/icons/cancelled.png</file>
+    </qresource>
+</RCC>

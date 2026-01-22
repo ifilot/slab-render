@@ -1,0 +1,17 @@
+Set customized instructions. Needs to be valid JSON code. 
+Example:
+
+"atom_colors" : [
+    "H/1/1/#ff0000",
+    "H/2/2/#00ff00",
+    "H/3/3/#0000ff",
+    "H/4/4/#ff00ff"
+],
+"atom_radii" : [
+    "C/0/0/1.0",
+    "H/0/0/0.5"
+],
+
+Note that only the validity of the JSON object is being tested.
+Further evaluation of the JSON instructions are handled by the
+Blender program and are not pre-evaluated.
