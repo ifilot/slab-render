@@ -8,10 +8,8 @@
 ; -----------------------------------------
 ; Application metadata
 ; -----------------------------------------
-!define APP_NAME        "SlabRender"
 !define APP_EXE         "slabrender.exe"
 !define COMPANY_NAME    "Inorganic Materials & Catalysis"
-!define VERSION         "0.1.0"
 !define INSTALL_DIR     "$PROGRAMFILES64\${APP_NAME}"
 
 ; -----------------------------------------
