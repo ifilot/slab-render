@@ -295,22 +295,14 @@ void MainWindow::build_blender_settings_panel(QVBoxLayout* layout) {
     layout_blender_settings->addWidget(this->combobox_bond_material, rownr, 1);
     this->combobox_bond_material->setCurrentIndex(1);
 
+    // --- Custom atom rendering rules ---
     rownr++;
-    layout_blender_settings->addWidget(new QLabel("Custom settings (json)"), rownr, 0);
-    QLabel* tooltip_info = new QLabel;
-    tooltip_info->setPixmap(pixmap_info);
-    tooltip_info->setToolTip(this->fetch_tooltip_text("custom_json_example"));
-    tooltip_info->setFixedWidth(20);
-    layout_blender_settings->addWidget(tooltip_info, rownr, 2);
+    layout_blender_settings->addWidget(new QLabel("Custom atom rendering"), rownr, 0);
+
+    // RenderAtomsWidget
     rownr++;
-    this->plaintext_modding = new QPlainTextEdit();
-    layout_blender_settings->addWidget(this->plaintext_modding, rownr, 0, 1, 2);
-    this->plaintext_modding->setPlainText("\"atom_colors\": [\n\n],\n\"atom_radii\": [\n\n],\n\"bond_distances\": [\n\n],");
-    connect(this->plaintext_modding, SIGNAL(textChanged()), this, SLOT(slot_check_valid_json()));
-    rownr++;
-    this->label_valid_json = new QLabel("JSON validation pass");
-    this->label_valid_json->setStyleSheet("QLabel { background-color : green; color : white; }");
-    layout_blender_settings->addWidget(this->label_valid_json, rownr, 0, 1, 2);
+    render_atoms_widget = new RenderAtomsWidget();
+    layout_blender_settings->addWidget(render_atoms_widget, rownr, 0, 1, 3);
 
     // rebuild images
     rownr++;
@@ -407,7 +399,7 @@ void MainWindow::slot_parse_files() {
     parameters.insert("nsubdiv", QVariant(this->spinbox_nsubdiv->value()));
     parameters.insert("atmat", QVariant(this->combobox_atom_material->currentText()));
     parameters.insert("bondmat", QVariant(this->combobox_bond_material->currentText()));
-    parameters.insert("custom_json", QVariant(this->plaintext_modding->toPlainText()));
+    parameters.insert("custom_json", QVariant(render_atoms_widget->generate_json()));
 
     // set icon when jobs are in queue
     static const QIcon icon(":/assets/icons/queue.png");

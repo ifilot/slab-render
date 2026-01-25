@@ -57,6 +57,7 @@
 #include "config.h"
 #include "vendor/simpleson/json.h"
 #include "atom_settings.h"
+#include "render_atoms_widget.h"
 
 class MainWindow : public QMainWindow
 {
@@ -103,7 +104,9 @@ private:
     // window for log messages
     std::unique_ptr<LogWindow> log_window;
 
-    JobInfoWidget* widget_job_info;
+    RenderAtomsWidget* render_atoms_widget = nullptr;
+    QGroupBox* advanced_json_group = nullptr;
+    JobInfoWidget* widget_job_info = nullptr;
 
     QVector<unsigned int> job_status;
 
