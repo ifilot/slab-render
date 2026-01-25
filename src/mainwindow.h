@@ -49,6 +49,7 @@
 #include <QMessageBox>
 #include <QSplitter>
 #include <QTextCursor>
+#include <QSettings>
 
 #include "jobinfowidget.h"
 #include "threadrenderimage.h"
@@ -117,6 +118,7 @@ private:
         "VASP Geometry (POSCAR*,CONTCAR*)",
         "ADF .log files (logfile)",
         "Gaussian .log files (*.log, *.LOG)",
+        "MKMCXX3 .mks files (*.mks)",
     };
 
 public:

@@ -39,6 +39,9 @@ std::vector<std::shared_ptr<Structure>> StructureLoader::load_file(const QString
     } else if(filename.endsWith(".log") || filename.endsWith(".LOG")) {
         qDebug() << "Recognising file as Gaussian log file type: " << path;
         return this->load_gaussian_logfile(path.toStdString());
+    } else if (filename.endsWith(".mks")) {
+        qDebug() << "Recognising file as MicroKinetic State (.mks) type:" << path;
+        return this->load_mks(path.toStdString());
     } else {
         throw std::runtime_error("Unknown file type: " + filename.toStdString());
     }
@@ -708,4 +711,99 @@ std::vector<std::shared_ptr<Structure>> StructureLoader::load_data(const std::st
     structures.push_back(structure);
 
     return structures;
+}
+
+/**
+ * @brief      Load structure from MKS file
+ *
+ * @param[in]  filename  The filename
+ *
+ * @return     Structure
+ */
+std::vector<std::shared_ptr<Structure>> StructureLoader::load_mks(const std::string& filename) {
+    std::ifstream infile(filename);
+    if (!infile.is_open()) {
+        throw std::runtime_error("Could not open " + filename);
+    }
+
+    std::string line;
+
+    unsigned int nr_atoms = 0;
+    double energy = 0.0;
+
+    MatrixUnitcell unitcell = MatrixUnitcell::Zero(3, 3);
+
+    // --- Read number of atoms ---
+    while (std::getline(infile, line)) {
+        boost::trim(line);
+        if (line == "# Number of atoms") {
+            std::getline(infile, line);
+            nr_atoms = boost::lexical_cast<unsigned int>(line);
+            break;
+        }
+    }
+
+    // --- Read electronic energy ---
+    while (std::getline(infile, line)) {
+        boost::trim(line);
+        if (line == "# Electronic energy (eV)") {
+            std::getline(infile, line);
+            energy = boost::lexical_cast<double>(line);
+            break;
+        }
+    }
+
+    // --- Read cell vectors ---
+    while (std::getline(infile, line)) {
+        boost::trim(line);
+        if (line == "# Cell vectors (Å)") {
+            for (unsigned int i = 0; i < 3; i++) {
+                std::getline(infile, line);
+                boost::trim(line);
+
+                std::vector<std::string> pieces;
+                boost::split(pieces, line, boost::is_any_of(" \t"), boost::token_compress_on);
+
+                for (unsigned int j = 0; j < 3; j++) {
+                    unitcell(i, j) = boost::lexical_cast<double>(pieces[j]);
+                }
+            }
+            break;
+        }
+    }
+
+    auto structure = std::make_shared<Structure>(unitcell);
+    structure->set_energy(energy);
+
+    // --- Read atomic coordinates ---
+    while (std::getline(infile, line)) {
+        boost::trim(line);
+        if (line == "# Atomic coordinates (Å)") {
+            break;
+        }
+    }
+
+    static const boost::regex regex_atom(
+        "^\\s*([A-Za-z]+)\\s+([0-9eE.+-]+)\\s+([0-9eE.+-]+)\\s+([0-9eE.+-]+)\\s*$"
+    );
+
+    for (unsigned int i = 0; i < nr_atoms; i++) {
+        std::getline(infile, line);
+        boost::smatch what;
+
+        if (boost::regex_match(line, what, regex_atom)) {
+            unsigned int elid = AtomSettings::get().get_atom_elnr(what[1]);
+            double x = boost::lexical_cast<double>(what[2]);
+            double y = boost::lexical_cast<double>(what[3]);
+            double z = boost::lexical_cast<double>(what[4]);
+
+            structure->add_atom(elid, x, y, z);
+        } else {
+            throw std::runtime_error("Invalid atom line in MKS file: " + line);
+        }
+    }
+
+    infile.close();
+
+    return { structure };
 }
