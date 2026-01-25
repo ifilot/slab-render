@@ -1,23 +1,30 @@
 # SlabRender
 
 ## Purpose
-SlabRender is a (hopefully) intuitive GUI to automatically produce molecular structures
-in Blender derived from VASP, ADF, or Gaussian type calculations.
+SlabRender is a (hopefully) intuitive GUI to automatically produce molecular
+structures in Blender derived from VASP, ADF, MKMCXX3 (mks) and Gaussian type
+calculations.
 
-**SlabRender has been tested for Blender 3.3 LTS**
+
+> [!NOTE]
+> SlabRender has been tested and verified with **Blender 3.3 LTS** and **Blender 4.5 LTS**.
 
 ## Usage
-Select a type of file from the dropdown menu. Next, select a root folder. SlabRender will
-aim to automatically grab all files in all folders. When you are satisfied with the list,
-you can either select a single file and produce an image for that file or produce images
-for all the files in the queue.
+Select a type of file from the dropdown menu. Next, select a root folder.
+SlabRender will aim to automatically grab all files in all folders. When you are
+satisfied with the list, you can either select a single file and produce an
+image for that file or produce images for all the files in the queue.
 
-**Important: The program assumes that each geometry file resides in a separate directory.**
+> [!WARNING]
+> **Each geometry file must reside in its own directory.**  
+> Placing multiple geometry files in the same folder may cause rendered images
+> to be overwritten.
 
 ## Supported files
 * VASP POSCAR/CONTCAR
 * ADF logfile
 * Gaussian .log/.LOG files
+* [MKMCXX3](https://www.mkmcxx.nl) `.mks` files
 
 ## Compilation
 
