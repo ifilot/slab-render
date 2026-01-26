@@ -20,6 +20,7 @@
 #include "mainwindow.h"
 
 #include <QApplication>
+#include <QCoreApplication>
 #include <QStringList>
 
 #include "config.h"
@@ -62,6 +63,8 @@ void myMessageOutput(QtMsgType type, const QMessageLogContext &context, const QS
 int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
+    QCoreApplication::setOrganizationName("TUe");
+    QCoreApplication::setApplicationName("Saucepan");
 
         std::unique_ptr<MainWindow> mainWindow;
         log_messages = std::make_shared<QStringList>();

@@ -86,7 +86,7 @@ public:
      *
      * @return     atomic radius
      */
-    float get_atom_radius(const std::string& elname);
+    float get_atom_radius(const std::string& elname) const;
 
     /**
      * @brief      Get the color of an element
@@ -95,7 +95,7 @@ public:
      *
      * @return     atomic radius
      */
-    std::string get_atom_color(const std::string& elname);
+    std::string get_atom_color(const std::string& elname) const;
 
     /**
      * @brief      Get the atomic radius of an element
@@ -104,7 +104,7 @@ public:
      *
      * @return     atomic radius
      */
-    float get_atom_radius_from_elnr(unsigned int elnr);
+    float get_atom_radius_from_elnr(unsigned int elnr) const;
 
     /**
      * @brief      Get element number of an element
@@ -113,7 +113,7 @@ public:
      *
      * @return     The atom elnr.
      */
-    unsigned int get_atom_elnr(const std::string& elname);
+    unsigned int get_atom_elnr(const std::string& elname) const;
 
     /**
      * @brief      Get the maximum bond distance between two atoms
@@ -123,7 +123,7 @@ public:
      *
      * @return     The bond distance.
      */
-    double get_bond_distance(int atoma, int atomb);
+    double get_bond_distance(int atoma, int atomb) const;
 
     /**
      * @brief      Gets the name from element number.

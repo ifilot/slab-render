@@ -49,6 +49,7 @@
 #include <QMessageBox>
 #include <QSplitter>
 #include <QTextCursor>
+#include <QSettings>
 
 #include "jobinfowidget.h"
 #include "threadrenderimage.h"
@@ -56,6 +57,7 @@
 #include "config.h"
 #include "vendor/simpleson/json.h"
 #include "atom_settings.h"
+#include "render_atoms_widget.h"
 
 class MainWindow : public QMainWindow
 {
@@ -93,7 +95,6 @@ private:
     QSpinBox* spinbox_nsubdiv;
     QComboBox* combobox_atom_material;
     QComboBox* combobox_bond_material;
-    QPlainTextEdit* plaintext_modding;
     QLabel* label_valid_json;
 
     // storage for log messages
@@ -102,7 +103,9 @@ private:
     // window for log messages
     std::unique_ptr<LogWindow> log_window;
 
-    JobInfoWidget* widget_job_info;
+    RenderAtomsWidget* render_atoms_widget = nullptr;
+    QGroupBox* advanced_json_group = nullptr;
+    JobInfoWidget* widget_job_info = nullptr;
 
     QVector<unsigned int> job_status;
 
@@ -117,6 +120,7 @@ private:
         "VASP Geometry (POSCAR*,CONTCAR*)",
         "ADF .log files (logfile)",
         "Gaussian .log files (*.log, *.LOG)",
+        "MKMCXX3 .mks files (*.mks)",
     };
 
 public:
@@ -145,8 +149,6 @@ private slots:
 
     void slot_parse_single_job();
 
-    void slot_check_valid_json();
-
     void slot_job_start(int jobid);
 
     void slot_job_done(int jobid);
@@ -158,8 +160,6 @@ private slots:
     void slot_change_ortho_scale(int item_id);
 
     void slot_set_zoom_level();
-
-    void slot_add_object_angles();
 
     void slot_cancel_queue();
 

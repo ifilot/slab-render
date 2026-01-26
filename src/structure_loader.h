@@ -106,5 +106,14 @@ public:
      */
     std::vector<std::shared_ptr<Structure>> load_data(const std::string& filename);
 
+    /**
+     * @brief      Load structure from MKS file
+     *
+     * @param[in]  filename  The filename
+     *
+     * @return     Structure
+     */
+    std::vector<std::shared_ptr<Structure>> load_mks(const std::string& filename);
+
 private:
 };

@@ -1,4 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
+cmake_policy(SET CMP0167 NEW)
 
 project(slabrender LANGUAGES CXX)
 
@@ -40,10 +41,16 @@ add_executable(slabrender WIN32
     src/atom.cpp
     src/atom_settings.cpp
     src/bond.cpp
+    src/color_picker_dialog.cpp
+    src/color_wheel_widget.cpp
     src/jobinfowidget.cpp
     src/logwindow.cpp
     src/main.cpp
     src/mainwindow.cpp
+    src/periodic_table_dialog.cpp
+    src/render_atoms_widget.cpp
+    src/rule_edit_dialog.cpp
+    src/rule_item_widget.cpp
     src/structure.cpp
     src/structure_loader.cpp
     src/threadrenderimage.cpp
@@ -54,26 +61,6 @@ add_executable(slabrender WIN32
     src/visualization/primitivebuilder.cpp
     src/visualization/shader_program.cpp
     src/visualization/shader_program_manager.cpp
-
-    src/atom.h
-    src/atom_settings.h
-    src/bond.h
-    src/config.h
-    src/jobinfowidget.h
-    src/logwindow.h
-    src/mainwindow.h
-    src/matrixmath.h
-    src/structure.h
-    src/structure_loader.h
-    src/threadrenderimage.h
-    src/vendor/simpleson/json.h
-    src/visualization/anaglyph_widget.h
-    src/visualization/model.h
-    src/visualization/model_loader.h
-    src/visualization/primitivebuilder.h
-    src/visualization/shader_program.h
-    src/visualization/shader_program_manager.h
-    src/visualization/shader_program_types.h
 )
 
 # --------------------

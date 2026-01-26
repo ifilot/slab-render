@@ -1,0 +1,44 @@
+name: Linux build
+
+permissions:
+  contents: write
+
+on:
+  push:
+    branches: [ "**" ]
+    tags: [ "v*" ]
+  pull_request:
+
+jobs:
+  # ==========================================================
+  # Linux build (Qt 6 + Boost)
+  # ==========================================================
+  linux:
+    name: Linux (Ubuntu)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y \
+            build-essential \
+            cmake \
+            qtbase5-dev \
+            qtbase5-dev-tools \
+            libqt5opengl5-dev \
+            libboost-all-dev \
+            libeigen3-dev \
+            libfreetype-dev \
+            libglm-dev
+
+      - name: Configure
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build
+        run: |
+          cmake --build build --parallel

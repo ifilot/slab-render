@@ -91,7 +91,6 @@ MainWindow::MainWindow(const std::shared_ptr<QStringList> _log_messages, QWidget
     connect(this->button_run_single_job, SIGNAL(released()), this, SLOT(slot_parse_single_job()));
     connect(this->listview_items, SIGNAL(currentRowChanged(int)), this->widget_job_info, SLOT(slot_update_job_info(int)));
     connect(this->listview_items, SIGNAL(currentRowChanged(int)), this->widget_job_info->get_anaglyph_widget(), SLOT(slot_load_structure(int)));
-    connect(this->widget_job_info->get_pushbutton_angle_json(), SIGNAL(released()), this, SLOT(slot_add_object_angles()));
     connect(this->widget_job_info->get_pushbutton_insert_zoom_level(), SIGNAL(released()), this, SLOT(slot_set_zoom_level()));
 
     // set layout
@@ -295,22 +294,14 @@ void MainWindow::build_blender_settings_panel(QVBoxLayout* layout) {
     layout_blender_settings->addWidget(this->combobox_bond_material, rownr, 1);
     this->combobox_bond_material->setCurrentIndex(1);
 
+    // --- Custom atom rendering rules ---
     rownr++;
-    layout_blender_settings->addWidget(new QLabel("Custom settings (json)"), rownr, 0);
-    QLabel* tooltip_info = new QLabel;
-    tooltip_info->setPixmap(pixmap_info);
-    tooltip_info->setToolTip(this->fetch_tooltip_text("custom_json_example"));
-    tooltip_info->setFixedWidth(20);
-    layout_blender_settings->addWidget(tooltip_info, rownr, 2);
+    layout_blender_settings->addWidget(new QLabel("Custom atom rendering"), rownr, 0);
+
+    // RenderAtomsWidget
     rownr++;
-    this->plaintext_modding = new QPlainTextEdit();
-    layout_blender_settings->addWidget(this->plaintext_modding, rownr, 0, 1, 2);
-    this->plaintext_modding->setPlainText("\"atom_colors\": [\n\n],\n\"atom_radii\": [\n\n],\n\"bond_distances\": [\n\n],");
-    connect(this->plaintext_modding, SIGNAL(textChanged()), this, SLOT(slot_check_valid_json()));
-    rownr++;
-    this->label_valid_json = new QLabel("JSON validation pass");
-    this->label_valid_json->setStyleSheet("QLabel { background-color : green; color : white; }");
-    layout_blender_settings->addWidget(this->label_valid_json, rownr, 0, 1, 2);
+    render_atoms_widget = new RenderAtomsWidget();
+    layout_blender_settings->addWidget(render_atoms_widget, rownr, 0, 1, 3);
 
     // rebuild images
     rownr++;
@@ -341,13 +332,20 @@ QStringList MainWindow::find_blender_executable() {
  * @brief Find files with a specific file name
  */
 QStringList MainWindow::find_files(const QString& path, const QStringList& filenames) {
-    qDebug() << "Finding files with pattern: " << filenames;
+    qDebug() << "Finding files with pattern:" << filenames;
+
     QString p = QDir::cleanPath(path);
-    QDirIterator it(p, filenames, QDir::Files, QDirIterator::Subdirectories);
+    QDirIterator it(
+        p,
+        filenames,
+        QDir::Files | QDir::NoDotAndDotDot,
+        QDirIterator::Subdirectories
+    );
+
     QStringList files;
-    do {
+    while (it.hasNext()) {
         files << it.next();
-    } while(it.hasNext());
+    }
 
     return files;
 }
@@ -400,7 +398,7 @@ void MainWindow::slot_parse_files() {
     parameters.insert("nsubdiv", QVariant(this->spinbox_nsubdiv->value()));
     parameters.insert("atmat", QVariant(this->combobox_atom_material->currentText()));
     parameters.insert("bondmat", QVariant(this->combobox_bond_material->currentText()));
-    parameters.insert("custom_json", QVariant(this->plaintext_modding->toPlainText()));
+    parameters.insert("custom_json", QVariant(render_atoms_widget->generate_json()));
 
     // set icon when jobs are in queue
     static const QIcon icon(":/assets/icons/queue.png");
@@ -453,7 +451,7 @@ void MainWindow::slot_parse_single_job() {
     parameters.insert("nsubdiv", QVariant(this->spinbox_nsubdiv->value()));
     parameters.insert("atmat", QVariant(this->combobox_atom_material->currentText()));
     parameters.insert("bondmat", QVariant(this->combobox_bond_material->currentText()));
-    parameters.insert("custom_json", QVariant(this->plaintext_modding->toPlainText()));
+    parameters.insert("custom_json", QVariant(render_atoms_widget->generate_json()));
 
     // set icon when jobs are in queue
     static const QIcon icon(":/assets/icons/queue.png");
@@ -464,66 +462,90 @@ void MainWindow::slot_parse_single_job() {
     process_job_queue->start();
 }
 
-void MainWindow::slot_check_valid_json() {
-    std::string json_string = "{" + this->plaintext_modding->toPlainText().toStdString() + "}";
-    try {
-        json::jobject result = json::jobject::parse(json_string);
-        this->label_valid_json->setText("JSON validation pass");
-        this->label_valid_json->setStyleSheet("QLabel { background-color : green; color : white; }");
-    } catch(const std::exception& e) {
-        this->label_valid_json->setText("Invalid JSON detected");
-        this->label_valid_json->setStyleSheet("QLabel { background-color : red; color : white; }");
-    }
-}
-
 void MainWindow::slot_select_folder() {
     qDebug() << "Opening dialog";
-    auto path = QFileDialog::getExistingDirectory(0, ("Select data folder"), QDir::currentPath());
-    if(path.isEmpty()) {
-        return;
-    } else {
-        qDebug() << "Clearing job queue";
-        this->process_job_queue.reset();
-        this->job_status.clear();
-        this->widget_job_info->set_process_job_queue_ptr(nullptr);
 
-        qDebug() << "Clearing list view";
-        this->listview_items->clear();
+    // --- Load last directory or fall back to Documents ---
+    QSettings settings;
+    QString startDir = settings.value("ui/last_data_directory").toString();
+
+    if (startDir.isEmpty() || !QDir(startDir).exists()) {
+        startDir = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
     }
 
+    const QString path = QFileDialog::getExistingDirectory(
+        this,
+        tr("Select data folder"),
+        startDir,
+        QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks
+    );
+
+    if (path.isEmpty()) {
+        return;
+    }
+
+    // --- Persist selected directory ---
+    settings.setValue("ui/last_data_directory", path);
+
+    // --- Reset UI state ---
+    qDebug() << "Clearing job queue";
+    process_job_queue.reset();
+    job_status.clear();
+    widget_job_info->set_process_job_queue_ptr(nullptr);
+
+    qDebug() << "Clearing list view";
+    listview_items->clear();
+
+    // --- Find files ---
     QStringList files;
-    if(this->combobox_file_types->currentText() == this->GEOMETRY_FILETYPES[0]) { // VASP CONTCAR
-        files = this->find_files(path, {"POSCAR*","CONTCAR*"});
-    } else if(this->combobox_file_types->currentText() == this->GEOMETRY_FILETYPES[1]) { // ADF LOGFILES
-        files = this->find_files(path, {"logfile"});
-    } else if(this->combobox_file_types->currentText() == this->GEOMETRY_FILETYPES[2]) { // Gaussian log files
-        files = this->find_files(path, {"*.LOG","*.log"});
+    const QString& type = combobox_file_types->currentText();
+
+    if (type == GEOMETRY_FILETYPES[0]) {              // VASP CONTCAR
+        files = find_files(path, {"POSCAR*", "CONTCAR*"});
+    } else if (type == GEOMETRY_FILETYPES[1]) {       // ADF LOGFILES
+        files = find_files(path, {"logfile"});
+    } else if (type == GEOMETRY_FILETYPES[2]) {       // Gaussian log files
+        files = find_files(path, {"*.LOG", "*.log"});
+    } else if (type == GEOMETRY_FILETYPES[3]) {       // MKS files
+        files = find_files(path, {"*.mks", "*.MKS"});
     } else {
         throw std::runtime_error("Invalid selection. Terminating program.");
     }
 
-    // icon for file to be rendered
-    static const QIcon icon(":/assets/icons/space_invader.png");
+    if (files.isEmpty()) {
+        qDebug() << "No matching files found in" << path;
 
-    int iterator = 0;
-    for(const QString& file : files) {
-        auto item = new QListWidgetItem();
-        item->setIcon(icon);
-        item->setText(file);
-        this->listview_items->insertItem(iterator, item);
-        this->job_status.push_back(JOB_QUEUED);
-        iterator++;
+        QMessageBox::information(
+            this,
+            tr("No files found"),
+            tr("No files matching the selected file type were found in:\n\n%1")
+                .arg(path)
+        );
+
+        button_parse_files->setEnabled(false);
+        widget_job_info->get_anaglyph_widget()->set_structure_paths({});
+        return;
     }
 
-    this->widget_job_info->get_anaglyph_widget()->set_structure_paths(files);
+    // --- Populate list ---
+    static const QIcon icon(":/assets/icons/space_invader.png");
 
-    this->button_parse_files->setEnabled(true);
+    int i = 0;
+    for (const QString& file : files) {
+        auto* item = new QListWidgetItem(icon, file);
+        listview_items->insertItem(i++, item);
+        job_status.push_back(JOB_QUEUED);
+    }
 
-    // build queue object
-    this->process_job_queue = std::make_unique<ThreadRenderImage>();
-    this->widget_job_info->set_process_job_queue_ptr(this->process_job_queue.get());
+    widget_job_info->get_anaglyph_widget()->set_structure_paths(files);
+
+    button_parse_files->setEnabled(true);
+
+    // --- Build queue object ---
+    process_job_queue = std::make_unique<ThreadRenderImage>();
+    widget_job_info->set_process_job_queue_ptr(process_job_queue.get());
     process_job_queue->set_files(files);
-    process_job_queue->set_executable(this->combobox_blender_executable->currentText());
+    process_job_queue->set_executable(combobox_blender_executable->currentText());
 }
 
 void MainWindow::slot_job_start(int jobid) {
@@ -558,48 +580,66 @@ void MainWindow::slot_queue_done() {
 
 void MainWindow::slot_probe_gpu() {
     qDebug() << "Probe GPUs";
-    this->label_gpus->clear();
+    label_gpus->clear();
+
     QTemporaryDir dir;
-    dir.setAutoRemove(false); // do not immediately remove
-    if(dir.isValid()) {
-        // write Blender axes template file
-        QFile blenderfile(":/assets/blender/axes_template.blend");
-        if(!blenderfile.open(QIODevice::ReadOnly)) {
-            throw std::runtime_error("Could not open blender file from assets.");
-        }
-        blenderfile.copy(dir.path() + "/axes_template.blend");
+    dir.setAutoRemove(false);
 
-        // write Python file containing Blender instructions
-        QFile pythonfile(":/assets/blender/probe_cards.py");
-        if(!pythonfile.open(QIODevice::ReadOnly)) {
-            throw std::runtime_error("Could not open Python file from assets.");
-        }
-        pythonfile.copy(dir.path() + "/probe_cards.py");
-
-        QStringList arguments = {"-b", "-P", "probe_cards.py"};
-        QProcess* blender_process = new QProcess();
-        blender_process->setProgram(this->combobox_blender_executable->currentText());
-        blender_process->setArguments(arguments);
-        blender_process->setProcessChannelMode(QProcess::SeparateChannels);
-        blender_process->setWorkingDirectory(dir.path());
-        blender_process->start();
-        if(blender_process->waitForFinished(1 * 60 * 1000)) { // max one minute
-            auto lines = blender_process->readAll().split('\n');
-            for(const QString& line : lines) {
-                if(line.contains("CyclesDeviceSettings") && line.contains("NVIDIA", Qt::CaseInsensitive)) {
-                    QString substr = line.split("CyclesDeviceSettings(\"")[1].split("\") at ")[0];
-                    if(this->label_gpus->text().count()) {
-                        this->label_gpus->setText(this->label_gpus->text() + "\n" + substr);
-                    } else {
-                        this->label_gpus->setText(substr);
-                    }
-                }
-            }
-        }
-
-    } else {
-        throw std::runtime_error("Invalid path");
+    if (!dir.isValid()) {
+        qCritical() << "Invalid temp directory";
+        return;
     }
+
+    const QString blendPath = dir.path() + "/axes_template.blend";
+    const QString pyPath    = dir.path() + "/probe_cards.py";
+
+    // --- Copy blend file ---
+    QFile::remove(blendPath);
+    QFile blenderfile(":/assets/blender/axes_template.blend");
+    if (!blenderfile.open(QIODevice::ReadOnly) || !blenderfile.copy(blendPath)) {
+        qCritical() << "Failed to copy blend file";
+        return;
+    }
+
+    // --- Copy python file ---
+    QFile::remove(pyPath);
+    QFile pythonfile(":/assets/blender/probe_cards.py");
+    if (!pythonfile.open(QIODevice::ReadOnly) || !pythonfile.copy(pyPath)) {
+        qCritical() << "Failed to copy python file";
+        return;
+    }
+
+    QProcess* blender = new QProcess(this);
+    blender->setProgram(combobox_blender_executable->currentText());
+    blender->setArguments({ "-b", blendPath, "-P", pyPath });
+    blender->setWorkingDirectory(dir.path());
+    blender->setProcessChannelMode(QProcess::MergedChannels);
+
+    blender->start();
+
+    if (!blender->waitForStarted()) {
+        qCritical() << "Blender failed to start:" << blender->errorString();
+        return;
+    }
+
+    if (!blender->waitForFinished(60 * 1000)) {
+        qCritical() << "Blender timed out";
+        blender->kill();
+        return;
+    }
+
+    const QString output = blender->readAll();
+    qDebug().noquote() << output;
+
+    // --- Parse GPU names ---
+    QStringList gpus;
+    for (const QString& line : output.split('\n')) {
+        if (line.contains("CUDA") || line.contains("OPTIX") || line.contains("HIP")) {
+            gpus << line.trimmed();
+        }
+    }
+
+    label_gpus->setText(gpus.join("\n"));
 }
 
 void MainWindow::slot_change_ortho_scale(int item_id) {
@@ -610,14 +650,6 @@ void MainWindow::slot_change_ortho_scale(int item_id) {
         this->label_custom_ortho_scale->setVisible(false);
         this->spinbox_custom_ortho_scale->setVisible(false);
     }
-}
-
-void MainWindow::slot_add_object_angles() {
-    QVector3D camera = this->widget_job_info->get_anaglyph_widget()->get_euler_angles();
-    QTextCursor new_cursor = this->plaintext_modding->textCursor();
-    new_cursor.movePosition(QTextCursor::End);
-    this->plaintext_modding->setTextCursor(new_cursor);
-    this->plaintext_modding->insertPlainText(tr("\n\"object_euler\": \"%1/%2/%3\",").arg(camera[0], 0, 'f', 2).arg(camera[1], 0, 'f', 2).arg(camera[2], 0, 'f', 2));
 }
 
 void MainWindow::slot_set_zoom_level() {
@@ -677,7 +709,8 @@ void MainWindow::slot_about() {
 
 void MainWindow::slot_rebuild_structures() {
     // overwrite AtomSettings object
-    AtomSettings::get().overwrite(this->plaintext_modding->toPlainText().toStdString());
+    // TODO: Update this
+    // AtomSettings::get().overwrite(this->plaintext_modding->toPlainText().toStdString());
 
     // instruct jobinfowidget to rebuild structures
     this->widget_job_info->rebuild_structures();

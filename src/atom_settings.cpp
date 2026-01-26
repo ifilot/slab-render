@@ -149,7 +149,7 @@ void AtomSettings::load() {
  *
  * @return     atomic radius
  */
-float AtomSettings::get_atom_radius(const std::string& elname){
+float AtomSettings::get_atom_radius(const std::string& elname) const {
     std::string radius = this->root.get<std::string>("atoms.radii." + elname);
     return boost::lexical_cast<float>(radius);
 }
@@ -161,7 +161,7 @@ float AtomSettings::get_atom_radius(const std::string& elname){
  *
  * @return     atomic radius
  */
-std::string AtomSettings::get_atom_color(const std::string& elname){
+std::string AtomSettings::get_atom_color(const std::string& elname) const {
     return this->root.get<std::string>("atoms.colors." + elname);
 }
 
@@ -172,7 +172,7 @@ std::string AtomSettings::get_atom_color(const std::string& elname){
  *
  * @return     atomic radius
  */
-float AtomSettings::get_atom_radius_from_elnr(unsigned int elnr) {
+float AtomSettings::get_atom_radius_from_elnr(unsigned int elnr) const {
     return this->radii[elnr];
 }
 
@@ -183,7 +183,7 @@ float AtomSettings::get_atom_radius_from_elnr(unsigned int elnr) {
  *
  * @return     The atom elnr.
  */
-unsigned int AtomSettings::get_atom_elnr(const std::string& elname){
+unsigned int AtomSettings::get_atom_elnr(const std::string& elname) const {
     std::string elnr = this->root.get<std::string>("atoms.elnr." + elname);
     return boost::lexical_cast<unsigned int>(elnr);
 }
@@ -196,7 +196,7 @@ unsigned int AtomSettings::get_atom_elnr(const std::string& elname){
  *
  * @return     The bond distance.
  */
-double AtomSettings::get_bond_distance(int atoma, int atomb) {
+double AtomSettings::get_bond_distance(int atoma, int atomb) const {
     return this->bond_distances[atoma][atomb];
 }
 
