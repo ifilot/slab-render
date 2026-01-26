@@ -95,7 +95,6 @@ private:
     QSpinBox* spinbox_nsubdiv;
     QComboBox* combobox_atom_material;
     QComboBox* combobox_bond_material;
-    QPlainTextEdit* plaintext_modding;
     QLabel* label_valid_json;
 
     // storage for log messages
@@ -150,8 +149,6 @@ private slots:
 
     void slot_parse_single_job();
 
-    void slot_check_valid_json();
-
     void slot_job_start(int jobid);
 
     void slot_job_done(int jobid);
@@ -163,8 +160,6 @@ private slots:
     void slot_change_ortho_scale(int item_id);
 
     void slot_set_zoom_level();
-
-    void slot_add_object_angles();
 
     void slot_cancel_queue();
 

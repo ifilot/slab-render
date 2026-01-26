@@ -91,7 +91,6 @@ MainWindow::MainWindow(const std::shared_ptr<QStringList> _log_messages, QWidget
     connect(this->button_run_single_job, SIGNAL(released()), this, SLOT(slot_parse_single_job()));
     connect(this->listview_items, SIGNAL(currentRowChanged(int)), this->widget_job_info, SLOT(slot_update_job_info(int)));
     connect(this->listview_items, SIGNAL(currentRowChanged(int)), this->widget_job_info->get_anaglyph_widget(), SLOT(slot_load_structure(int)));
-    connect(this->widget_job_info->get_pushbutton_angle_json(), SIGNAL(released()), this, SLOT(slot_add_object_angles()));
     connect(this->widget_job_info->get_pushbutton_insert_zoom_level(), SIGNAL(released()), this, SLOT(slot_set_zoom_level()));
 
     // set layout
@@ -452,7 +451,7 @@ void MainWindow::slot_parse_single_job() {
     parameters.insert("nsubdiv", QVariant(this->spinbox_nsubdiv->value()));
     parameters.insert("atmat", QVariant(this->combobox_atom_material->currentText()));
     parameters.insert("bondmat", QVariant(this->combobox_bond_material->currentText()));
-    parameters.insert("custom_json", QVariant(this->plaintext_modding->toPlainText()));
+    parameters.insert("custom_json", QVariant(render_atoms_widget->generate_json()));
 
     // set icon when jobs are in queue
     static const QIcon icon(":/assets/icons/queue.png");
@@ -461,18 +460,6 @@ void MainWindow::slot_parse_single_job() {
     // launch queue
     process_job_queue->set_parameters(parameters);
     process_job_queue->start();
-}
-
-void MainWindow::slot_check_valid_json() {
-    std::string json_string = "{" + this->plaintext_modding->toPlainText().toStdString() + "}";
-    try {
-        json::jobject result = json::jobject::parse(json_string);
-        this->label_valid_json->setText("JSON validation pass");
-        this->label_valid_json->setStyleSheet("QLabel { background-color : green; color : white; }");
-    } catch(const std::exception& e) {
-        this->label_valid_json->setText("Invalid JSON detected");
-        this->label_valid_json->setStyleSheet("QLabel { background-color : red; color : white; }");
-    }
 }
 
 void MainWindow::slot_select_folder() {
@@ -665,14 +652,6 @@ void MainWindow::slot_change_ortho_scale(int item_id) {
     }
 }
 
-void MainWindow::slot_add_object_angles() {
-    QVector3D camera = this->widget_job_info->get_anaglyph_widget()->get_euler_angles();
-    QTextCursor new_cursor = this->plaintext_modding->textCursor();
-    new_cursor.movePosition(QTextCursor::End);
-    this->plaintext_modding->setTextCursor(new_cursor);
-    this->plaintext_modding->insertPlainText(tr("\n\"object_euler\": \"%1/%2/%3\",").arg(camera[0], 0, 'f', 2).arg(camera[1], 0, 'f', 2).arg(camera[2], 0, 'f', 2));
-}
-
 void MainWindow::slot_set_zoom_level() {
     this->combobox_ortho_scale->setCurrentIndex(1);
     this->spinbox_custom_ortho_scale->setValue(this->widget_job_info->get_anaglyph_widget()->get_camera_position()[2]);
@@ -730,7 +709,8 @@ void MainWindow::slot_about() {
 
 void MainWindow::slot_rebuild_structures() {
     // overwrite AtomSettings object
-    AtomSettings::get().overwrite(this->plaintext_modding->toPlainText().toStdString());
+    // TODO: Update this
+    // AtomSettings::get().overwrite(this->plaintext_modding->toPlainText().toStdString());
 
     // instruct jobinfowidget to rebuild structures
     this->widget_job_info->rebuild_structures();

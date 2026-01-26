@@ -19,6 +19,11 @@
  ********************************************************************************/
 #include "threadrenderimage.h"
 
+#include <QJsonObject>
+#include <QJsonDocument>
+#include <QJsonParseError>
+#include <QFile>
+
 ThreadRenderImage::ThreadRenderImage() {
 
 }
@@ -236,46 +241,56 @@ void ThreadRenderImage::create_atompack(const QString& path) {
     }
 }
 
-void ThreadRenderImage::build_manifest_file(const QString& path) {
-    QFile outfile(path);
-    if(outfile.open(QIODevice::WriteOnly | QIODevice::Text)) {
-        QTextStream stream(&outfile);
+void ThreadRenderImage::build_manifest_file(const QString& path)
+{
+    // root MUST be declared at function scope
+    QJsonObject root;
 
-        stream << "{" << "\n";
+    // --- regular parameters ---
+    if (this->parameters["ortho_scale"].toString() == "auto") {
+        root["ortho_scale"] = this->parameters["ortho_scale"].toString();
+    } else {
+        root["ortho_scale"] = this->parameters["ortho_custom_scale"].toString();
+    }
 
-        QStringList string_parameters = {"bondmat", "atmat", "camera_direction"};
-        QStringList bool_parameters = {"expansion", "hide_axes", "show_unitcell"};
-        QStringList int_parameters = {"resolution_x", "resolution_y", "tile_x", "tile_y", "samples", "nsubdiv"};
+    root["bondmat"]          = this->parameters["bondmat"].toString();
+    root["atmat"]            = this->parameters["atmat"].toString();
+    root["camera_direction"] = this->parameters["camera_direction"].toString();
 
-        try {
-            // whether to have regular ortho scale or custom
-            if(this->parameters["ortho_scale"] == "auto") {
-                stream << "\"" << "ortho_scale" << "\": " << "\"" << this->parameters["ortho_scale"].toString() << "\"" << ",\n";
-            } else {
-                stream << "\"" << "ortho_scale" << "\": " << "\"" << this->parameters["ortho_custom_scale"].toString() << "\"" << ",\n";
+    root["expansion"]     = this->parameters["expansion"].toBool();
+    root["hide_axes"]     = this->parameters["hide_axes"].toBool();
+    root["show_unitcell"] = this->parameters["show_unitcell"].toBool();
+
+    root["resolution_x"] = this->parameters["resolution_x"].toInt();
+    root["resolution_y"] = this->parameters["resolution_y"].toInt();
+    root["tile_x"]       = this->parameters["tile_x"].toInt();
+    root["tile_y"]       = this->parameters["tile_y"].toInt();
+    root["samples"]      = this->parameters["samples"].toInt();
+    root["nsubdiv"]      = this->parameters["nsubdiv"].toInt();
+
+    // --- merge custom JSON safely ---
+    const QString custom = this->parameters["custom_json"].toString().trimmed();
+    if (!custom.isEmpty()) {
+        QJsonParseError err;
+        QJsonDocument doc = QJsonDocument::fromJson(custom.toUtf8(), &err);
+
+        if (err.error == QJsonParseError::NoError && doc.isObject()) {
+            const QJsonObject customObj = doc.object();
+            for (auto it = customObj.begin(); it != customObj.end(); ++it) {
+                root[it.key()] = it.value();   // <-- root is in scope here
             }
-
-            for(const QString& str : string_parameters) {
-                stream << "\"" << str << "\": " << "\"" << this->parameters[str].toString() << "\"" << ",\n";
-            }
-
-            for(const QString& str : bool_parameters) {
-                stream << "\"" << str << "\": " << tr(this->parameters[str].toBool() ? "true" : "false") << ",\n";
-            }
-
-            for(const QString& str : int_parameters) {
-                stream << "\"" << str << "\": " << this->parameters[str].toInt() << ",\n";
-            }
-        }  catch (const std::exception& e) {
-            qCritical() << tr("Error encountered in parsing parameters: ") + tr(e.what());
+        } else {
+            qCritical() << "Invalid custom JSON:" << err.errorString();
         }
+    }
 
-        stream << this->parameters["custom_json"].toString() << "\n";
+    root["generator"] = "SlabRender";
 
-        stream << "\"generator\": \"SlabRender\"\n";
-
-        stream << "}" << "\n";
-
-        outfile.close();
+    // --- write file ---
+    QJsonDocument finalDoc(root);
+    QFile f(path);
+    if (f.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text)) {
+        f.write(finalDoc.toJson(QJsonDocument::Indented));
+        f.close();
     }
 }
