@@ -1,106 +1,122 @@
 #include "color_picker_dialog.h"
+#include "color_wheel_widget.h"
+
 #include <QVBoxLayout>
-#include <QGridLayout>
+#include <QHBoxLayout>
+#include <QPushButton>
 #include <QSlider>
 #include <QLabel>
-#include <QLineEdit>
-#include <QPushButton>
+
+static QColor idealTextColor(const QColor& bg) {
+    // Perceived luminance (WCAG-ish)
+    const double luminance =
+        0.299 * bg.redF() +
+        0.587 * bg.greenF() +
+        0.114 * bg.blueF();
+
+    return luminance > 0.5 ? Qt::black : Qt::white;
+}
 
 ColorPickerDialog::ColorPickerDialog(const QColor& initial, QWidget* parent)
-    : QDialog(parent), color_(initial) {
+    : QDialog(parent) {
 
     setWindowTitle(tr("Select color"));
     setModal(true);
-    setMinimumWidth(300);
+    resize(400, 420);
 
     auto* main = new QVBoxLayout(this);
 
-    preview = new QLabel();
-    preview->setFixedHeight(40);
-    preview->setFrameShape(QFrame::Box);
-    main->addWidget(preview);
+    // ---- Wheel + slider ----
+    auto* center = new QHBoxLayout();
 
-    auto* grid = new QGridLayout();
-    main->addLayout(grid);
-
-    auto make_slider = []() {
-        auto* s = new QSlider(Qt::Horizontal);
-        s->setRange(0, 255);
-        return s;
-    };
-
-    slider_r = make_slider();
-    slider_g = make_slider();
-    slider_b = make_slider();
-
-    grid->addWidget(new QLabel("R"), 0, 0);
-    grid->addWidget(slider_r, 0, 1);
-    grid->addWidget(new QLabel("G"), 1, 0);
-    grid->addWidget(slider_g, 1, 1);
-    grid->addWidget(new QLabel("B"), 2, 0);
-    grid->addWidget(slider_b, 2, 1);
-
-    edit_hex = new QLineEdit();
-    grid->addWidget(new QLabel("Hex"), 3, 0);
-    grid->addWidget(edit_hex, 3, 1);
-
-    connect(slider_r, &QSlider::valueChanged,
-            this, &ColorPickerDialog::slot_slider_changed);
-    connect(slider_g, &QSlider::valueChanged,
-            this, &ColorPickerDialog::slot_slider_changed);
-    connect(slider_b, &QSlider::valueChanged,
-            this, &ColorPickerDialog::slot_slider_changed);
-
-    connect(edit_hex, &QLineEdit::editingFinished,
-            this, &ColorPickerDialog::slot_hex_changed);
-
-    auto* buttons = new QHBoxLayout();
-    main->addLayout(buttons);
-    buttons->addStretch();
-
-    auto* btn_cancel = new QPushButton("Cancel");
-    auto* btn_ok = new QPushButton("OK");
-
-    buttons->addWidget(btn_cancel);
-    buttons->addWidget(btn_ok);
-
-    connect(btn_ok, &QPushButton::clicked, this, &QDialog::accept);
-    connect(btn_cancel, &QPushButton::clicked, this, &QDialog::reject);
-
-    slider_r->setValue(color_.red());
-    slider_g->setValue(color_.green());
-    slider_b->setValue(color_.blue());
-
-    update_ui();
-}
-
-void ColorPickerDialog::slot_slider_changed() {
-    color_.setRgb(
-        slider_r->value(),
-        slider_g->value(),
-        slider_b->value()
+    wheel_ = new ColorWheelWidget(this);
+    center->addWidget(wheel_, 1);
+    connect(
+        wheel_,
+        &ColorWheelWidget::colorChanged,
+        this,
+        &ColorPickerDialog::updateHexDisplay
     );
-    update_ui();
-}
 
-void ColorPickerDialog::slot_hex_changed() {
-    QColor c(edit_hex->text());
-    if (c.isValid()) {
-        color_ = c;
-        slider_r->setValue(c.red());
-        slider_g->setValue(c.green());
-        slider_b->setValue(c.blue());
-        update_ui();
-    }
-}
+    valueSlider_ = new QSlider(Qt::Vertical, this);
+    valueSlider_->setRange(0, 100);
+    valueSlider_->setFixedWidth(22);
+    center->addWidget(valueSlider_);
 
-void ColorPickerDialog::update_ui() {
-    preview->setStyleSheet(
-        QString("background-color: %1").arg(color_.name())
+    main->addLayout(center);
+
+    // ---- Hex display ----
+    hexLabel_ = new QLabel(this);
+    hexLabel_->setAlignment(Qt::AlignCenter);
+    hexLabel_->setMinimumHeight(36);
+    hexLabel_->setStyleSheet(
+        "QLabel {"
+        " border: 1px solid #444;"
+        " border-radius: 4px;"
+        " font-family: monospace;"
+        " font-size: 14px;"
+        " font-weight: bold;"
+        "}"
     );
-    edit_hex->setText(color_.name());
+    main->addWidget(hexLabel_);
+
+    // ---- Init from color ----
+    qreal h, s, v;
+    initial.getHsvF(&h, &s, &v);
+
+    wheel_->setColor(initial);
+    valueSlider_->setValue(static_cast<int>(v * 100));
+    updateHexDisplay(initial);
+
+    // ---- Sync slider → wheel ----
+    connect(valueSlider_, &QSlider::valueChanged, this, [this](int val) {
+        QColor c = wheel_->color();
+        c.setHsvF(c.hueF(), c.saturationF(), val / 100.0);
+        wheel_->setColor(c);
+        updateHexDisplay(c);
+    });
+
+    // ---- Sync wheel changes ----
+    connect(wheel_, &QWidget::customContextMenuRequested, this, [this]() {
+        updateHexDisplay(wheel_->color());
+    });
+
+    // Instead: update on repaint via event filter
+    wheel_->installEventFilter(this);
+
+    // ---- Buttons ----
+    auto* btns = new QHBoxLayout();
+    btns->addStretch();
+
+    auto* btnCancel = new QPushButton(tr("Cancel"));
+    auto* btnOk     = new QPushButton(tr("OK"));
+
+    btns->addWidget(btnCancel);
+    btns->addWidget(btnOk);
+    main->addLayout(btns);
+
+    connect(btnCancel, &QPushButton::clicked, this, &QDialog::reject);
+    connect(btnOk,     &QPushButton::clicked, this, &QDialog::accept);
 }
 
 QColor ColorPickerDialog::color() const {
-    return color_;
+    return wheel_->color();
+}
+
+void ColorPickerDialog::updateHexDisplay(const QColor& c) {
+    const QString hex = c.name(QColor::HexRgb).toUpper();
+    const QColor text = idealTextColor(c);
+
+    hexLabel_->setText(hex);
+    hexLabel_->setStyleSheet(QString(
+        "QLabel {"
+        " background-color: %1;"
+        " color: %2;"
+        " border: 1px solid #444;"
+        " border-radius: 4px;"
+        " font-family: monospace;"
+        " font-size: 14px;"
+        " font-weight: bold;"
+        "}"
+    ).arg(c.name(), text.name()));
 }

@@ -1,7 +1,9 @@
 #pragma once
-#include <QDialog>
 
-class QPushButton;
+#include <QDialog>
+#include <QString>
+
+class QGridLayout;
 
 class PeriodicTableDialog : public QDialog {
     Q_OBJECT
@@ -11,11 +13,11 @@ public:
 
     QString selectedElement() const;
 
-private slots:
-    void slot_element_clicked();
-
 private:
     void build_ui();
+    void add_element(int row, int col, unsigned int elnr);
+    void add_placeholder(int row, int col, const QString& text, const QString& tooltip);
 
-    QString selected_element;
+    QGridLayout* grid_ = nullptr;
+    QString selected_;
 };

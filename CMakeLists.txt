@@ -42,6 +42,7 @@ add_executable(slabrender WIN32
     src/atom_settings.cpp
     src/bond.cpp
     src/color_picker_dialog.cpp
+    src/color_wheel_widget.cpp
     src/jobinfowidget.cpp
     src/logwindow.cpp
     src/main.cpp
