@@ -1,43 +1,55 @@
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// SlabRender
+// Author: Ivo Filot <ivo@ivofilot.nl>
+
 #version 330 core
 
-in vec3 normal_worldspace;
-in vec3 normal_eyespace;
-in vec3 vertex_direction_eyespace;
-in vec3 lightdirection_eyespace;
+// Inputs from the vertex shader
+in vec3 normal_worldspace;          // normal in world space (optional)
+in vec3 normal_eyespace;            // normal in eye space
+in vec3 vertex_direction_eyespace;  // fragment -> camera direction (eye space)
+in vec3 lightdirection_eyespace;    // fragment -> light direction (eye space)
 
-out vec4 fragColor;
+// Final output color
+out vec4 frag_color;
 
+// Base surface color (albedo)
 uniform vec3 color;
 
-float ambient_strength = 0.1f;
-float specular_strength = 0.5f;
+// Lighting strengths
+const float ambient_strength  = 0.1;
+const float specular_strength = 0.5;
+const float shininess = 32.0;
 
 void main() {
-    // load color from texture
+
     float alpha = 1.0;
-    vec3 lightcolor = vec3(1,1,1);
 
-    // light source
-    vec3 l = normalize(lightdirection_eyespace);
+    // Light color (white)
+    vec3 light_color = vec3(1.0);
 
-    // normal
-    vec3 n = normalize(normal_eyespace);
+    // ---- Normalize vectors ----
 
-    // eye position
-    vec3 e = normalize(vertex_direction_eyespace);
-    vec3 r = reflect(-l, n);
+    vec3 light_dir = normalize(lightdirection_eyespace);
+    vec3 normal    = normalize(normal_eyespace);
+    vec3 view_dir  = normalize(vertex_direction_eyespace);
 
-    // calculate diffuse
-    float cosTheta = clamp(dot(n, l), 0, 1);
+    // Reflection vector for specular highlight
+    vec3 reflect_dir = reflect(-light_dir, normal);
 
-    // calculate specular
-    float cosAlpha = clamp(dot(e,r), 0, 1);
+    // ---- Diffuse lighting (Lambert) ----
+    float diffuse_factor = clamp(dot(normal, light_dir), 0.0, 1.0);
 
-    vec3 ambient = ambient_strength * lightcolor;
-    vec3 diffuse = cosTheta * lightcolor;
-    vec3 specular = pow(cosAlpha, 32) * specular_strength * lightcolor;
+    // ---- Specular lighting (Phong) ----
+    float specular_factor = clamp(dot(view_dir, reflect_dir), 0.0, 1.0);
+
+    // ---- Lighting components ----
+    vec3 ambient  = ambient_strength * light_color;
+    vec3 diffuse  = diffuse_factor * light_color;
+    vec3 specular = pow(specular_factor, shininess)
+                    * specular_strength * light_color;
 
     vec3 result = (ambient + diffuse + specular) * color;
 
-    fragColor = vec4(result, alpha);
+    frag_color = vec4(result, alpha);
 }
