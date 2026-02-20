@@ -26,10 +26,6 @@ private:
     QPlainTextEdit* text_job_info;
     QLabel* label_image;
     QLabel* label_selected_atom;
-    QLabel* label_camera_euler;
-    QLabel* label_zoom_level;
-    QPushButton* button_insert_angle_json;
-    QPushButton* button_insert_zoom_level;
 
     ThreadRenderImage* process_job_queue = nullptr;
     AnaglyphWidget* anaglyph_widget = nullptr;
@@ -45,14 +41,6 @@ public:
         return this->anaglyph_widget;
     }
 
-    inline QPushButton* get_pushbutton_angle_json() {
-        return this->button_insert_angle_json;
-    }
-
-    inline QPushButton* get_pushbutton_insert_zoom_level() {
-        return this->button_insert_zoom_level;
-    }
-
     /**
      * @brief Rebuild structures based on AtomSettings data
      */
@@ -65,10 +53,6 @@ public slots:
 
 private slots:
     void slot_update_atom_label(int atom_id);
-
-    void slot_update_camera();
-
-    void slot_update_zoom_level();
 
     void slot_show_path_in_explorer_window();
 

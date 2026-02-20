@@ -44,30 +44,10 @@ JobInfoWidget::JobInfoWidget(QWidget *parent) : QTabWidget(parent) {
     this->insertTab(1, anaglyph_container, "Structure");
     anaglyph_container->layout()->addWidget(this->anaglyph_widget);
 
-    QWidget* container_angle = new QWidget();
-    QHBoxLayout* layout_angle = new QHBoxLayout();
-    container_angle->setLayout(layout_angle);
-    anaglyph_container->layout()->addWidget(container_angle);
-    this->label_camera_euler = new QLabel("Object Euler angles");
-    layout_angle->addWidget(this->label_camera_euler);
-    this->button_insert_angle_json = new QPushButton("<< Insert unitcell orientation");
-    layout_angle->addWidget(this->button_insert_angle_json);
-
-    container_angle = new QWidget();
-    QHBoxLayout* layout_zoom = new QHBoxLayout();
-    container_angle->setLayout(layout_zoom);
-    anaglyph_container->layout()->addWidget(container_angle);
-    this->label_zoom_level = new QLabel("Zoom level");
-    layout_zoom->addWidget(this->label_zoom_level);
-    this->button_insert_zoom_level = new QPushButton("<< Insert zoom level");
-    layout_zoom->addWidget(this->button_insert_zoom_level);
-
     this->label_selected_atom = new QLabel("Atom selection");
     anaglyph_container->layout()->addWidget(this->label_selected_atom);
 
     connect(this->anaglyph_widget, SIGNAL(signal_atom_selected(int)), this, SLOT(slot_update_atom_label(int)));
-    connect(this->anaglyph_widget, SIGNAL(signal_object_angles()), this, SLOT(slot_update_camera()));
-    connect(this->anaglyph_widget, SIGNAL(signal_zoom_level()), this, SLOT(slot_update_zoom_level()));
 }
 
 /**
@@ -108,15 +88,6 @@ void JobInfoWidget::slot_update_job_info(int job_id) {
 void JobInfoWidget::slot_update_atom_label(int atom_id) {
     const Atom& atom = this->anaglyph_widget->get_structure()->get_atom(atom_id);
     this->label_selected_atom->setText(tr("Selected atom: %1 (#%2)").arg(AtomSettings::get().get_name_from_elnr(atom.atnr).c_str()).arg(atom_id+1));
-}
-
-void JobInfoWidget::slot_update_camera() {
-    QVector3D camera = this->anaglyph_widget->get_euler_angles();
-    this->label_camera_euler->setText(tr("X=%1° Y=%2° Z=%3°").arg(camera[0], 0, 'f', 2).arg(camera[1], 0, 'f', 2).arg(camera[2], 0, 'f', 2));
-}
-
-void JobInfoWidget::slot_update_zoom_level() {
-    this->label_zoom_level->setText(tr("Orthographic scale: %1").arg(this->anaglyph_widget->get_camera_position()[2]));
 }
 
 void JobInfoWidget::slot_show_path_in_explorer_window() {

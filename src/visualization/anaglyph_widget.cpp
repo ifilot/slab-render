@@ -20,6 +20,8 @@
 
 #include "anaglyph_widget.h"
 
+#include <algorithm>
+
 AnaglyphWidget::AnaglyphWidget(QWidget *parent)
     : QOpenGLWidget(parent) {
     const QString operatingsystem = QSysInfo::productType();
@@ -410,6 +412,24 @@ QVector3D AnaglyphWidget::get_arcball_vector(int x, int y) {
 void AnaglyphWidget::set_arcball_rotation(float arcball_angle, const QVector4D& arcball_vector) {
     this->arcball_rotation.setToIdentity();
     this->arcball_rotation.rotate(arcball_angle, QVector3D(arcball_vector));
+    this->update();
+}
+
+void AnaglyphWidget::set_euler_angles(const QVector3D& euler_angles) {
+    this->arcball_rotation.setToIdentity();
+    this->rotation_matrix.setToIdentity();
+    this->rotation_matrix.rotate(QQuaternion::fromEulerAngles(euler_angles));
+    emit(signal_object_angles());
+    this->update();
+}
+
+void AnaglyphWidget::set_zoom_level(float zoom_level) {
+    this->camera_position[2] = std::max(zoom_level, 5.0f);
+    float ratio = (float)this->width() / (float)this->height();
+    float zoom = this->camera_position[2];
+    this->projection.setToIdentity();
+    this->projection.ortho(-zoom/2.0f, zoom/2.0f, -zoom / ratio /2.0f, zoom / ratio / 2.0f, 0.01f, 1000.0f);
+    emit(signal_zoom_level());
     this->update();
 }
 

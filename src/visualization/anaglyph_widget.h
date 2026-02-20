@@ -202,6 +202,10 @@ public:
         return this->camera_position;
     }
 
+    void set_euler_angles(const QVector3D& euler_angles);
+
+    void set_zoom_level(float zoom_level);
+
     ~AnaglyphWidget();
 
     /**

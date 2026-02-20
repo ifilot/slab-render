@@ -50,6 +50,7 @@
 #include <QSplitter>
 #include <QTextCursor>
 #include <QSettings>
+#include <QJsonObject>
 
 #include "jobinfowidget.h"
 #include "threadrenderimage.h"
@@ -72,7 +73,6 @@ private:
     QPushButton* button_run_single_job;
     QPushButton* button_cancel;
     QPushButton* button_select_folder;
-    QPushButton* button_rebuild_structures;
     QProgressBar* progress_bar;
     QLabel* label_gpus;
 
@@ -84,6 +84,10 @@ private:
     QLabel* label_custom_ortho_scale;
     QDoubleSpinBox* spinbox_custom_ortho_scale;
     QComboBox* combobox_camera_direction;
+    QDoubleSpinBox* spinbox_custom_euler_x;
+    QDoubleSpinBox* spinbox_custom_euler_y;
+    QDoubleSpinBox* spinbox_custom_euler_z;
+    bool flag_block_custom_euler_sync = false;
     QCheckBox* checkbox_unitcell;
     QCheckBox* checkbox_expansion;
     QCheckBox* checkbox_axes;
@@ -159,7 +163,9 @@ private slots:
 
     void slot_change_ortho_scale(int item_id);
 
-    void slot_set_zoom_level();
+    void slot_update_custom_zoom_level();
+    void slot_update_custom_euler();
+    void slot_set_custom_euler();
 
     void slot_cancel_queue();
 
@@ -171,6 +177,7 @@ private slots:
 
     void slot_about();
 
-    void slot_rebuild_structures();
+private:
+    QJsonObject build_custom_json() const;
 };
 #endif // MAINWINDOW_H

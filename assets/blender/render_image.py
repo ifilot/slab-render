@@ -320,6 +320,9 @@ def build_camera(data, autoscale):
     elif data['camera_direction'] == 'Y-':
         location = [0.0, -100.0, 0.0]
         rotation = [np.pi/2.0, 0.0, 0.0]
+    elif data['camera_direction'] == 'custom':
+        location = [0.0, 0.0, 100.0]
+        rotation = [0.0, 0.0, 0.0]
 
     # if a camera position is specified, overwrite the
     # default position from the direction

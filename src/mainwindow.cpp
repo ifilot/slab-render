@@ -19,6 +19,9 @@
  ********************************************************************************/
 #include "mainwindow.h"
 
+#include <QJsonDocument>
+#include <QJsonParseError>
+
 MainWindow::MainWindow(const std::shared_ptr<QStringList> _log_messages, QWidget *parent)
     : QMainWindow(parent),
     log_messages(_log_messages) {
@@ -91,7 +94,10 @@ MainWindow::MainWindow(const std::shared_ptr<QStringList> _log_messages, QWidget
     connect(this->button_run_single_job, SIGNAL(released()), this, SLOT(slot_parse_single_job()));
     connect(this->listview_items, SIGNAL(currentRowChanged(int)), this->widget_job_info, SLOT(slot_update_job_info(int)));
     connect(this->listview_items, SIGNAL(currentRowChanged(int)), this->widget_job_info->get_anaglyph_widget(), SLOT(slot_load_structure(int)));
-    connect(this->widget_job_info->get_pushbutton_insert_zoom_level(), SIGNAL(released()), this, SLOT(slot_set_zoom_level()));
+    connect(this->listview_items, SIGNAL(currentRowChanged(int)), this, SLOT(slot_update_custom_euler()));
+    connect(this->listview_items, SIGNAL(currentRowChanged(int)), this, SLOT(slot_update_custom_zoom_level()));
+    connect(this->widget_job_info->get_anaglyph_widget(), SIGNAL(signal_zoom_level()), this, SLOT(slot_update_custom_zoom_level()));
+    connect(this->widget_job_info->get_anaglyph_widget(), SIGNAL(signal_object_angles()), this, SLOT(slot_update_custom_euler()));
 
     // set layout
     this->setMinimumWidth(1280);
@@ -100,9 +106,6 @@ MainWindow::MainWindow(const std::shared_ptr<QStringList> _log_messages, QWidget
 
     //  build blender settings interface
     build_blender_settings_panel(layout_right);
-
-    // connect buttons for Blender settings panel
-    connect(this->button_rebuild_structures, SIGNAL(released()), this, SLOT(slot_rebuild_structures()));
 
     this->build_dropdown_menu();
 }
@@ -205,6 +208,42 @@ void MainWindow::build_blender_settings_panel(QVBoxLayout* layout) {
     this->combobox_camera_direction->addItem("Y-");
     this->combobox_camera_direction->addItem("X+");
     this->combobox_camera_direction->addItem("X-");
+    this->combobox_camera_direction->addItem("custom");
+
+    rownr++;
+    layout_blender_settings->addWidget(new QLabel("Euler x/y/z"), rownr, 0);
+    QWidget* custom_euler_widget = new QWidget();
+    QHBoxLayout* custom_euler_layout = new QHBoxLayout();
+    custom_euler_layout->setContentsMargins(0,0,0,0);
+    custom_euler_widget->setLayout(custom_euler_layout);
+    this->spinbox_custom_euler_x = new QDoubleSpinBox();
+    this->spinbox_custom_euler_y = new QDoubleSpinBox();
+    this->spinbox_custom_euler_z = new QDoubleSpinBox();
+    this->spinbox_custom_euler_x->setRange(-360.0, 360.0);
+    this->spinbox_custom_euler_y->setRange(-360.0, 360.0);
+    this->spinbox_custom_euler_z->setRange(-360.0, 360.0);
+    this->spinbox_custom_euler_x->setDecimals(2);
+    this->spinbox_custom_euler_y->setDecimals(2);
+    this->spinbox_custom_euler_z->setDecimals(2);
+    this->spinbox_custom_euler_x->setSingleStep(1.0);
+    this->spinbox_custom_euler_y->setSingleStep(1.0);
+    this->spinbox_custom_euler_z->setSingleStep(1.0);
+    connect(this->spinbox_custom_euler_x, SIGNAL(valueChanged(double)), this, SLOT(slot_set_custom_euler()));
+    connect(this->spinbox_custom_euler_y, SIGNAL(valueChanged(double)), this, SLOT(slot_set_custom_euler()));
+    connect(this->spinbox_custom_euler_z, SIGNAL(valueChanged(double)), this, SLOT(slot_set_custom_euler()));
+    custom_euler_layout->addWidget(this->spinbox_custom_euler_x);
+    custom_euler_layout->addWidget(this->spinbox_custom_euler_y);
+    custom_euler_layout->addWidget(this->spinbox_custom_euler_z);
+    layout_blender_settings->addWidget(custom_euler_widget, rownr, 1);
+
+    connect(this->spinbox_custom_ortho_scale,
+            qOverload<double>(&QDoubleSpinBox::valueChanged),
+            this,
+            [this](double value) {
+                if(this->combobox_ortho_scale->currentIndex() == 1) {
+                    this->widget_job_info->get_anaglyph_widget()->set_zoom_level(static_cast<float>(value));
+                }
+            });
 
     // whether to hide the axes
     rownr++;
@@ -303,11 +342,6 @@ void MainWindow::build_blender_settings_panel(QVBoxLayout* layout) {
     render_atoms_widget = new RenderAtomsWidget();
     layout_blender_settings->addWidget(render_atoms_widget, rownr, 0, 1, 3);
 
-    // rebuild images
-    rownr++;
-    this->button_rebuild_structures = new QPushButton("Rebuild structures");
-    layout_blender_settings->addWidget(this->button_rebuild_structures, rownr, 0);
-
     QFrame* frame = new QFrame();
     layout->addWidget(frame);
     frame->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
@@ -398,7 +432,7 @@ void MainWindow::slot_parse_files() {
     parameters.insert("nsubdiv", QVariant(this->spinbox_nsubdiv->value()));
     parameters.insert("atmat", QVariant(this->combobox_atom_material->currentText()));
     parameters.insert("bondmat", QVariant(this->combobox_bond_material->currentText()));
-    parameters.insert("custom_json", QVariant(render_atoms_widget->generate_json()));
+    parameters.insert("custom_json", QVariant(QString(QJsonDocument(this->build_custom_json()).toJson(QJsonDocument::Indented))));
 
     // set icon when jobs are in queue
     static const QIcon icon(":/assets/icons/queue.png");
@@ -451,7 +485,7 @@ void MainWindow::slot_parse_single_job() {
     parameters.insert("nsubdiv", QVariant(this->spinbox_nsubdiv->value()));
     parameters.insert("atmat", QVariant(this->combobox_atom_material->currentText()));
     parameters.insert("bondmat", QVariant(this->combobox_bond_material->currentText()));
-    parameters.insert("custom_json", QVariant(render_atoms_widget->generate_json()));
+    parameters.insert("custom_json", QVariant(QString(QJsonDocument(this->build_custom_json()).toJson(QJsonDocument::Indented))));
 
     // set icon when jobs are in queue
     static const QIcon icon(":/assets/icons/queue.png");
@@ -652,9 +686,56 @@ void MainWindow::slot_change_ortho_scale(int item_id) {
     }
 }
 
-void MainWindow::slot_set_zoom_level() {
-    this->combobox_ortho_scale->setCurrentIndex(1);
-    this->spinbox_custom_ortho_scale->setValue(this->widget_job_info->get_anaglyph_widget()->get_camera_position()[2]);
+void MainWindow::slot_update_custom_zoom_level() {
+    if(this->combobox_ortho_scale->currentIndex() == 1) {
+        this->spinbox_custom_ortho_scale->setValue(this->widget_job_info->get_anaglyph_widget()->get_camera_position()[2]);
+    }
+}
+
+void MainWindow::slot_update_custom_euler() {
+    this->flag_block_custom_euler_sync = true;
+    const QVector3D euler = this->widget_job_info->get_anaglyph_widget()->get_euler_angles();
+    this->spinbox_custom_euler_x->setValue(euler[0]);
+    this->spinbox_custom_euler_y->setValue(euler[1]);
+    this->spinbox_custom_euler_z->setValue(euler[2]);
+    this->flag_block_custom_euler_sync = false;
+}
+
+void MainWindow::slot_set_custom_euler() {
+    if(this->flag_block_custom_euler_sync) {
+        return;
+    }
+
+    const int custom_idx = this->combobox_camera_direction->findText("custom");
+    if(custom_idx >= 0) {
+        this->combobox_camera_direction->setCurrentIndex(custom_idx);
+    }
+    this->widget_job_info->get_anaglyph_widget()->set_euler_angles(
+        QVector3D(this->spinbox_custom_euler_x->value(),
+                  this->spinbox_custom_euler_y->value(),
+                  this->spinbox_custom_euler_z->value()));
+}
+
+QJsonObject MainWindow::build_custom_json() const {
+    QJsonObject root;
+    const QString custom_json = this->render_atoms_widget->generate_json();
+    if(!custom_json.trimmed().isEmpty()) {
+        QJsonParseError err;
+        const QJsonDocument doc = QJsonDocument::fromJson(custom_json.toUtf8(), &err);
+        if(err.error == QJsonParseError::NoError && doc.isObject()) {
+            root = doc.object();
+        }
+    }
+
+    if(this->combobox_camera_direction->currentText() == "custom") {
+        const QVector3D euler = this->widget_job_info->get_anaglyph_widget()->get_euler_angles();
+        root["object_euler"] = QString("%1/%2/%3")
+            .arg(euler[0], 0, 'f', 6)
+            .arg(euler[1], 0, 'f', 6)
+            .arg(euler[2], 0, 'f', 6);
+    }
+
+    return root;
 }
 
 void MainWindow::slot_cancel_queue() {
@@ -707,11 +788,3 @@ void MainWindow::slot_about() {
         message_box.exec();
 }
 
-void MainWindow::slot_rebuild_structures() {
-    // overwrite AtomSettings object
-    // TODO: Update this
-    // AtomSettings::get().overwrite(this->plaintext_modding->toPlainText().toStdString());
-
-    // instruct jobinfowidget to rebuild structures
-    this->widget_job_info->rebuild_structures();
-}
