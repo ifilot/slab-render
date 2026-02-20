@@ -1,3 +1,23 @@
+/********************************************************************************
+ * This file is part of SlabRender                                              *
+ *                                                                              *
+ * Author: Ivo Filot <i.a.w.filot@tue.nl>                                       *
+ *                                                                              *
+ * This program is free software; you can redistribute it and/or                *
+ * modify it under the terms of the GNU Lesser General Public                   *
+ * License as published by the Free Software Foundation; either                 *
+ * version 3 of the License, or (at your option) any later version.             *
+ *                                                                              *
+ * This program is distributed in the hope that it will be useful,              *
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of               *
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU            *
+ * Lesser General Public License for more details.                              *
+ *                                                                              *
+ * You should have received a copy of the GNU Lesser General Public License     *
+ * along with this program; if not, write to the Free Software Foundation,      *
+ * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.          *
+ ********************************************************************************/
+
 #include "color_wheel_widget.h"
 
 #include <QPainter>
@@ -9,18 +29,27 @@ ColorWheelWidget::ColorWheelWidget(QWidget* parent)
     setMinimumSize(200, 200);
 }
 
+/**
+ * @brief setColor.
+ */
 void ColorWheelWidget::setColor(const QColor& c) {
     c.getHsvF(&hue_, &saturation_, &value_);
     update();
     emit colorChanged(color());
 }
 
+/**
+ * @brief color.
+ */
 QColor ColorWheelWidget::color() const {
     QColor c;
     c.setHsvF(hue_, saturation_, value_);
     return c;
 }
 
+/**
+ * @brief paintEvent.
+ */
 void ColorWheelWidget::paintEvent(QPaintEvent*) {
     QPainter p(this);
     p.setRenderHint(QPainter::Antialiasing);
@@ -75,15 +104,24 @@ void ColorWheelWidget::paintEvent(QPaintEvent*) {
     p.drawEllipse(sel, 6, 6);
 }
 
+/**
+ * @brief mousePressEvent.
+ */
 void ColorWheelWidget::mousePressEvent(QMouseEvent* e) {
     updateFromPosition(e->pos());
 }
 
+/**
+ * @brief mouseMoveEvent.
+ */
 void ColorWheelWidget::mouseMoveEvent(QMouseEvent* e) {
     if (e->buttons() & Qt::LeftButton)
         updateFromPosition(e->pos());
 }
 
+/**
+ * @brief updateFromPosition.
+ */
 void ColorWheelWidget::updateFromPosition(const QPoint& pos) {
     const QPointF center(width() / 2.0, height() / 2.0);
     QPointF d = pos - center;

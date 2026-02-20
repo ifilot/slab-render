@@ -1,25 +1,24 @@
-/****************************************************************************
- *                                                                          *
- *   Rubriks Cube                                                           *
- *   Copyright (C) 2022 Ivo Filot <ivo@ivofilot.nl>                         *
- *                                                                          *
- *   This program is free software: you can redistribute it and/or modify   *
- *   it under the terms of the GNU Lesser General Public License as         *
- *   published by the Free Software Foundation, either version 3 of the     *
- *   License, or (at your option) any later version.                        *
- *                                                                          *
- *   This program is distributed in the hope that it will be useful,        *
- *   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          *
- *   GNU General Public License for more details.                           *
- *                                                                          *
- *   You should have received a copy of the GNU General Public license      *
- *   along with this program.  If not, see <https://www.gnu.org/licenses/>. *
- *                                                                          *
- ****************************************************************************/
+/********************************************************************************
+ * This file is part of SlabRender                                              *
+ *                                                                              *
+ * Author: Ivo Filot <i.a.w.filot@tue.nl>                                       *
+ *                                                                              *
+ * This program is free software; you can redistribute it and/or                *
+ * modify it under the terms of the GNU Lesser General Public                   *
+ * License as published by the Free Software Foundation; either                 *
+ * version 3 of the License, or (at your option) any later version.             *
+ *                                                                              *
+ * This program is distributed in the hope that it will be useful,              *
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of               *
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU            *
+ * Lesser General Public License for more details.                              *
+ *                                                                              *
+ * You should have received a copy of the GNU Lesser General Public License     *
+ * along with this program; if not, write to the Free Software Foundation,      *
+ * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.          *
+ ********************************************************************************/
 
-#ifndef _ANAGLYPH_WIDGET
-#define _ANAGLYPH_WIDGET
+#pragma once
 
 #include <QOpenGLWidget>
 #include <QOpenGLFunctions>
@@ -121,19 +120,37 @@ private:
     int selected_atom = -1;
 
 public:
+   /**
+    * @brief AnaglyphWidget.
+    */
     AnaglyphWidget(QWidget *parent = 0);
 
+    /**
+     * @brief set_object.
+     */
     double set_object(const std::string& filename);
 
+    /**
+     * @brief set_structure_paths.
+     */
     inline void set_structure_paths(const QStringList& _structure_paths) {
         this->structure_paths = _structure_paths;
     }
 
+    /**
+     * @brief get_structure.
+     */
     inline const auto& get_structure() const {
         return this->structure;
     }
 
+    /**
+     * @brief get_euler_angles.
+     */
     inline QVector3D get_euler_angles() const {
+        /**
+         * @brief fromRotationMatrix.
+         */
         return QQuaternion::fromRotationMatrix((this->arcball_rotation*this->rotation_matrix).normalMatrix()).toEulerAngles();
     }
 
@@ -146,8 +163,14 @@ public:
      */
     void paint_model();
 
+    /**
+     * @brief window_move_event.
+     */
     void window_move_event();
 
+    /**
+     * @brief set_stereo.
+     */
     void set_stereo(QString stereo_name);
 
     QSize minimumSizeHint() const Q_DECL_OVERRIDE;
@@ -194,18 +217,33 @@ public:
         this->flag_rotation = false;
     }
 
+    /**
+     * @brief set_unitcell_scale.
+     */
     inline void set_unitcell_scale(float _scale) {
         this->unitcell_scale = _scale;
     }
 
+    /**
+     * @brief get_camera_position.
+     */
     inline const QVector3D& get_camera_position() const {
         return this->camera_position;
     }
 
+    /**
+     * @brief set_euler_angles.
+     */
     void set_euler_angles(const QVector3D& euler_angles);
 
+    /**
+     * @brief set_zoom_level.
+     */
     void set_zoom_level(float zoom_level);
 
+    /**
+     * @brief AnaglyphWidget.
+     */
     ~AnaglyphWidget();
 
     /**
@@ -214,17 +252,35 @@ public:
     void update();
 
 public slots:
+    /**
+     * @brief cleanup.
+     */
     void cleanup();
 
+    /**
+     * @brief slot_load_structure.
+     */
     void slot_load_structure(int structure_id);
 
 signals:
+    /**
+     * @brief frameNumberChanged.
+     */
     void frameNumberChanged(size_t frames);
 
+    /**
+     * @brief signal_atom_selected.
+     */
     void signal_atom_selected(int atom_id);
 
+    /**
+     * @brief signal_object_angles.
+     */
     void signal_object_angles();
 
+    /**
+     * @brief signal_zoom_level.
+     */
     void signal_zoom_level();
 
 protected:
@@ -310,6 +366,9 @@ private:
      */
     void reset_matrices();
 
+    /**
+     * @brief calculate_ray.
+     */
     void calculate_ray(const QPoint& mouse_position, QVector3D* ray_origin, QVector3D* ray_direction);
 
     /**
@@ -323,10 +382,14 @@ private:
      *
      * @return index of the atom
      */
+    /**
+     * @brief get_atom_raycast.
+     */
     int get_atom_raycast(const QVector3D& ray_origin, const QVector3D& ray_vector);
 
 private slots:
+    /**
+     * @brief process_input.
+     */
     void process_input();
 };
-
-#endif // _ANAGLYPH_WIDGET

@@ -1,5 +1,5 @@
 /********************************************************************************
- * This file is part of Saucepan                                                *
+ * This file is part of SlabRender                                                *
  *                                                                              *
  * Author: Ivo Filot <i.a.w.filot@tue.nl>                                       *
  *                                                                              *
@@ -153,6 +153,9 @@ void MainWindow::build_dropdown_menu() {
     setMenuBar(menuBar);
 }
 
+/**
+ * @brief build_blender_settings_panel.
+ */
 void MainWindow::build_blender_settings_panel(QVBoxLayout* layout) {
     // custom icon for tooltips
     QIcon icon_info = QIcon(":/assets/icons/info.png");
@@ -351,6 +354,9 @@ MainWindow::~MainWindow()
 {
 }
 
+/**
+ * @brief find_blender_executable.
+ */
 QStringList MainWindow::find_blender_executable() {
     QString path = QDir::cleanPath("C:/Program Files/Blender Foundation");
     QDirIterator it(path, {"blender.exe"}, QDir::NoFilter | QDir::Executable | QDir::Files, QDirIterator::Subdirectories);
@@ -384,6 +390,9 @@ QStringList MainWindow::find_files(const QString& path, const QStringList& filen
     return files;
 }
 
+/**
+ * @brief fetch_tooltip_text.
+ */
 QString MainWindow::fetch_tooltip_text(const QString& filename) {
     QFile file(":/assets/tooltips/" + filename + ".txt");
     if(file.open(QIODevice::ReadOnly)) {
@@ -392,6 +401,9 @@ QString MainWindow::fetch_tooltip_text(const QString& filename) {
     return {};
 }
 
+/**
+ * @brief slot_parse_files.
+ */
 void MainWindow::slot_parse_files() {
     // disable all buttons
     this->button_parse_files->setEnabled(false);
@@ -445,6 +457,9 @@ void MainWindow::slot_parse_files() {
     process_job_queue->start();
 }
 
+/**
+ * @brief slot_parse_single_job.
+ */
 void MainWindow::slot_parse_single_job() {
     // disable all buttons
     this->button_parse_files->setEnabled(false);
@@ -496,6 +511,9 @@ void MainWindow::slot_parse_single_job() {
     process_job_queue->start();
 }
 
+/**
+ * @brief slot_select_folder.
+ */
 void MainWindow::slot_select_folder() {
     qDebug() << "Opening dialog";
 
@@ -582,6 +600,9 @@ void MainWindow::slot_select_folder() {
     process_job_queue->set_executable(combobox_blender_executable->currentText());
 }
 
+/**
+ * @brief slot_job_start.
+ */
 void MainWindow::slot_job_start(int jobid) {
     this->progress_bar->setValue(jobid+1);
 
@@ -591,6 +612,9 @@ void MainWindow::slot_job_start(int jobid) {
     this->job_status[jobid] = JOB_RUNNING;
 }
 
+/**
+ * @brief slot_job_done.
+ */
 void MainWindow::slot_job_done(int jobid) {
     this->progress_bar->setValue(jobid+1);
 
@@ -605,6 +629,9 @@ void MainWindow::slot_job_done(int jobid) {
     this->widget_job_info->slot_update_job_info(jobid);
 }
 
+/**
+ * @brief slot_queue_done.
+ */
 void MainWindow::slot_queue_done() {
     this->button_parse_files->setEnabled(true);
     this->button_select_folder->setEnabled(true);
@@ -612,6 +639,9 @@ void MainWindow::slot_queue_done() {
     this->button_run_single_job->setEnabled(true);
 }
 
+/**
+ * @brief slot_probe_gpu.
+ */
 void MainWindow::slot_probe_gpu() {
     qDebug() << "Probe GPUs";
     label_gpus->clear();
@@ -676,6 +706,9 @@ void MainWindow::slot_probe_gpu() {
     label_gpus->setText(gpus.join("\n"));
 }
 
+/**
+ * @brief slot_change_ortho_scale.
+ */
 void MainWindow::slot_change_ortho_scale(int item_id) {
     if(item_id > 0) {
         this->label_custom_ortho_scale->setVisible(true);
@@ -686,12 +719,18 @@ void MainWindow::slot_change_ortho_scale(int item_id) {
     }
 }
 
+/**
+ * @brief slot_update_custom_zoom_level.
+ */
 void MainWindow::slot_update_custom_zoom_level() {
     if(this->combobox_ortho_scale->currentIndex() == 1) {
         this->spinbox_custom_ortho_scale->setValue(this->widget_job_info->get_anaglyph_widget()->get_camera_position()[2]);
     }
 }
 
+/**
+ * @brief slot_update_custom_euler.
+ */
 void MainWindow::slot_update_custom_euler() {
     this->flag_block_custom_euler_sync = true;
     const QVector3D euler = this->widget_job_info->get_anaglyph_widget()->get_euler_angles();
@@ -701,6 +740,9 @@ void MainWindow::slot_update_custom_euler() {
     this->flag_block_custom_euler_sync = false;
 }
 
+/**
+ * @brief slot_set_custom_euler.
+ */
 void MainWindow::slot_set_custom_euler() {
     if(this->flag_block_custom_euler_sync) {
         return;
@@ -716,6 +758,9 @@ void MainWindow::slot_set_custom_euler() {
                   this->spinbox_custom_euler_z->value()));
 }
 
+/**
+ * @brief build_custom_json.
+ */
 QJsonObject MainWindow::build_custom_json() const {
     QJsonObject root;
     const QString custom_json = this->render_atoms_widget->generate_json();
@@ -738,6 +783,9 @@ QJsonObject MainWindow::build_custom_json() const {
     return root;
 }
 
+/**
+ * @brief slot_cancel_queue.
+ */
 void MainWindow::slot_cancel_queue() {
     if(this->process_job_queue && this->process_job_queue.get()->isRunning()) {
         qDebug() << "Requesting interruption of queue, wait until current job is finished...";
@@ -746,6 +794,9 @@ void MainWindow::slot_cancel_queue() {
     }
 }
 
+/**
+ * @brief slot_queue_cancelled.
+ */
 void MainWindow::slot_queue_cancelled() {
     qDebug() << "Job cancellation received, updating status.";
     this->button_parse_files->setEnabled(true);
@@ -765,14 +816,23 @@ void MainWindow::slot_queue_cancelled() {
     }
 }
 
+/**
+ * @brief slot_exit.
+ */
 void MainWindow::slot_exit() {
     QApplication::quit();
 }
 
+/**
+ * @brief slot_debug_log.
+ */
 void MainWindow::slot_debug_log() {
     this->log_window->show();
 }
 
+/**
+ * @brief slot_about.
+ */
 void MainWindow::slot_about() {
     QMessageBox message_box;
         //message_box.setStyleSheet("QLabel{min-width: 250px; font-weight: normal;}");

@@ -1,5 +1,24 @@
-#ifndef PRIMITIVEBUILDER_H
-#define PRIMITIVEBUILDER_H
+/********************************************************************************
+ * This file is part of SlabRender                                              *
+ *                                                                              *
+ * Author: Ivo Filot <i.a.w.filot@tue.nl>                                       *
+ *                                                                              *
+ * This program is free software; you can redistribute it and/or                *
+ * modify it under the terms of the GNU Lesser General Public                   *
+ * License as published by the Free Software Foundation; either                 *
+ * version 3 of the License, or (at your option) any later version.             *
+ *                                                                              *
+ * This program is distributed in the hope that it will be useful,              *
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of               *
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU            *
+ * Lesser General Public License for more details.                              *
+ *                                                                              *
+ * You should have received a copy of the GNU Lesser General Public License     *
+ * along with this program; if not, write to the Free Software Foundation,      *
+ * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.          *
+ ********************************************************************************/
+
+#pragma once
 
 #include <QOpenGLFunctions>
 #include <QOpenGLVertexArrayObject>
@@ -43,10 +62,19 @@ private:
     MatrixUnitcell unitcell;
 
 public:
+   /**
+    * @brief PrimitiveBuilder.
+    */
     PrimitiveBuilder();
 
+    /**
+     * @brief build_models.
+     */
     void build_models();
 
+    /**
+     * @brief set_unitcell.
+     */
     inline void set_unitcell(const MatrixUnitcell& _unitcell) {
         this->unitcell = _unitcell;
         if(QOpenGLContext::currentContext()->isValid()) {
@@ -56,22 +84,37 @@ public:
 
     // getters
 
+    /**
+     * @brief get_vao_sphere.
+     */
     inline QOpenGLVertexArrayObject* get_vao_sphere() {
         return &this->vao_sphere;
     }
 
+    /**
+     * @brief get_vao_cylinder.
+     */
     inline QOpenGLVertexArrayObject* get_vao_cylinder() {
         return &this->vao_cylinder;
     }
 
+    /**
+     * @brief get_vao_unitcell.
+     */
     inline QOpenGLVertexArrayObject* get_vao_unitcell() {
         return &this->vao_unitcell;
     }
 
+    /**
+     * @brief get_num_vertices_sphere.
+     */
     inline size_t get_num_vertices_sphere() const {
         return this->sphere_indices.size();
     }
 
+    /**
+     * @brief get_num_vertices_cylinder.
+     */
     inline size_t get_num_vertices_cylinder() const {
         return this->cylinder_indices.size();
     }
@@ -97,5 +140,3 @@ public:
     void generate_coordinates_unitcell(const MatrixUnitcell& unitcell);
 
 };
-
-#endif // PRIMITIVEBUILDER_H

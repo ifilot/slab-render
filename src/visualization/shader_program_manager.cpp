@@ -1,28 +1,25 @@
-/****************************************************************************
- *                                                                          *
- *   Rubriks Cube                                                           *
- *   Copyright (C) 2022 Ivo Filot <ivo@ivofilot.nl>                         *
- *                                                                          *
- *   This program is free software: you can redistribute it and/or modify   *
- *   it under the terms of the GNU Lesser General Public License as         *
- *   published by the Free Software Foundation, either version 3 of the     *
- *   License, or (at your option) any later version.                        *
- *                                                                          *
- *   This program is distributed in the hope that it will be useful,        *
- *   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          *
- *   GNU General Public License for more details.                           *
- *                                                                          *
- *   You should have received a copy of the GNU General Public license      *
- *   along with this program.  If not, see <https://www.gnu.org/licenses/>. *
- *                                                                          *
- ****************************************************************************/
+/********************************************************************************
+ * This file is part of SlabRender                                              *
+ *                                                                              *
+ * Author: Ivo Filot <i.a.w.filot@tue.nl>                                       *
+ *                                                                              *
+ * This program is free software; you can redistribute it and/or                *
+ * modify it under the terms of the GNU Lesser General Public                   *
+ * License as published by the Free Software Foundation; either                 *
+ * version 3 of the License, or (at your option) any later version.             *
+ *                                                                              *
+ * This program is distributed in the hope that it will be useful,              *
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of               *
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU            *
+ * Lesser General Public License for more details.                              *
+ *                                                                              *
+ * You should have received a copy of the GNU Lesser General Public License     *
+ * along with this program; if not, write to the Free Software Foundation,      *
+ * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.          *
+ ********************************************************************************/
 
 #include "shader_program_manager.h"
 
-/**
- * @brief      Default constructor
- */
 ShaderProgramManager::ShaderProgramManager() {}
 
 /**
@@ -52,6 +49,9 @@ ShaderProgram* ShaderProgramManager::get_shader_program(const std::string& name)
  * @param[in]  fragment_filename  The fragment filename
  *
  * @return     pointer to shader program
+ */
+/**
+ * @brief create_shader_program.
  */
 ShaderProgram* ShaderProgramManager::create_shader_program(const std::string& name, const ShaderProgramType type, const QString& vertex_filename, const QString& fragment_filename) {
     // create program

@@ -1,22 +1,22 @@
-/****************************************************************************
- *                                                                          *
- *   Rubriks Cube                                                           *
- *   Copyright (C) 2022 Ivo Filot <ivo@ivofilot.nl>                         *
- *                                                                          *
- *   This program is free software: you can redistribute it and/or modify   *
- *   it under the terms of the GNU Lesser General Public License as         *
- *   published by the Free Software Foundation, either version 3 of the     *
- *   License, or (at your option) any later version.                        *
- *                                                                          *
- *   This program is distributed in the hope that it will be useful,        *
- *   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          *
- *   GNU General Public License for more details.                           *
- *                                                                          *
- *   You should have received a copy of the GNU General Public license      *
- *   along with this program.  If not, see <https://www.gnu.org/licenses/>. *
- *                                                                          *
- ****************************************************************************/
+/********************************************************************************
+ * This file is part of SlabRender                                              *
+ *                                                                              *
+ * Author: Ivo Filot <i.a.w.filot@tue.nl>                                       *
+ *                                                                              *
+ * This program is free software; you can redistribute it and/or                *
+ * modify it under the terms of the GNU Lesser General Public                   *
+ * License as published by the Free Software Foundation; either                 *
+ * version 3 of the License, or (at your option) any later version.             *
+ *                                                                              *
+ * This program is distributed in the hope that it will be useful,              *
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of               *
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU            *
+ * Lesser General Public License for more details.                              *
+ *                                                                              *
+ * You should have received a copy of the GNU Lesser General Public License     *
+ * along with this program; if not, write to the Free Software Foundation,      *
+ * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.          *
+ ********************************************************************************/
 
 #include "anaglyph_widget.h"
 
@@ -40,24 +40,39 @@ AnaglyphWidget::AnaglyphWidget(QWidget *parent)
     this->reset_matrices();
 }
 
+/**
+ * @brief AnaglyphWidget destructor.
+ */
 AnaglyphWidget::~AnaglyphWidget() {
     cleanup();
 }
 
+/**
+ * @brief minimumSizeHint.
+ */
 QSize AnaglyphWidget::minimumSizeHint() const {
     return QSize(50, 50);
 }
 
+/**
+ * @brief sizeHint.
+ */
 QSize AnaglyphWidget::sizeHint() const {
     return QSize(400, 400);
 }
 
+/**
+ * @brief cleanup.
+ */
 void AnaglyphWidget::cleanup() {
     makeCurrent();
     this->release_models();
     doneCurrent();
 }
 
+/**
+ * @brief slot_load_structure.
+ */
 void AnaglyphWidget::slot_load_structure(int structure_id) {
     if(structure_id < 0) {
         this->structure.reset();
@@ -85,7 +100,7 @@ void AnaglyphWidget::initializeGL() {
         this->axes_models[i]->load_to_vao();
     }
 
-    glClearColor(0.8f, 0.8f, 0.8f, 1.0f);
+    glClearColor(0.976f, 0.976f, 0.976f, 1.0f);
 
     this->load_shaders();
 
@@ -409,12 +424,18 @@ QVector3D AnaglyphWidget::get_arcball_vector(int x, int y) {
     return P;
 }
 
+/**
+ * @brief set_arcball_rotation.
+ */
 void AnaglyphWidget::set_arcball_rotation(float arcball_angle, const QVector4D& arcball_vector) {
     this->arcball_rotation.setToIdentity();
     this->arcball_rotation.rotate(arcball_angle, QVector3D(arcball_vector));
     this->update();
 }
 
+/**
+ * @brief set_euler_angles.
+ */
 void AnaglyphWidget::set_euler_angles(const QVector3D& euler_angles) {
     this->arcball_rotation.setToIdentity();
     this->rotation_matrix.setToIdentity();
@@ -423,6 +444,9 @@ void AnaglyphWidget::set_euler_angles(const QVector3D& euler_angles) {
     this->update();
 }
 
+/**
+ * @brief set_zoom_level.
+ */
 void AnaglyphWidget::set_zoom_level(float zoom_level) {
     this->camera_position[2] = std::max(zoom_level, 5.0f);
     float ratio = (float)this->width() / (float)this->height();
@@ -455,12 +479,18 @@ void AnaglyphWidget::wheelEvent(QWheelEvent *event) {
     this->update();
 }
 
+/**
+ * @brief update.
+ */
 void AnaglyphWidget::update() {
     QOpenGLWidget::update();
     emit(signal_object_angles());
 
 }
 
+/**
+ * @brief process_input.
+ */
 void AnaglyphWidget::process_input() {
     // also apply a z-axis rotation if rotation is enabled
     if(this->flag_rotation) {
@@ -501,11 +531,17 @@ void AnaglyphWidget::release_models() {
 
 }
 
+/**
+ * @brief window_move_event.
+ */
 void AnaglyphWidget::window_move_event() {
     this->top_left = mapToGlobal(QPoint(0, 0));
     this->update();
 }
 
+/**
+ * @brief set_stereo.
+ */
 void AnaglyphWidget::set_stereo(QString stereo_name) {
     if (!stereo_name.isNull()) {
         // set stereoscopic projection
@@ -642,6 +678,9 @@ void AnaglyphWidget::calculate_ray(const QPoint& mouse_position, QVector3D* ray_
  * selection should be based on largest z-value.
  *
  * @return index of the atom
+ */
+/**
+ * @brief get_atom_raycast.
  */
 int AnaglyphWidget::get_atom_raycast(const QVector3D& ray_origin, const QVector3D& ray_vector) {
     int selected_atom = -1;

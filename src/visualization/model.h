@@ -1,25 +1,24 @@
-/****************************************************************************
- *                                                                          *
- *   Rubriks Cube                                                           *
- *   Copyright (C) 2022 Ivo Filot <ivo@ivofilot.nl>                         *
- *                                                                          *
- *   This program is free software: you can redistribute it and/or modify   *
- *   it under the terms of the GNU Lesser General Public License as         *
- *   published by the Free Software Foundation, either version 3 of the     *
- *   License, or (at your option) any later version.                        *
- *                                                                          *
- *   This program is distributed in the hope that it will be useful,        *
- *   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          *
- *   GNU General Public License for more details.                           *
- *                                                                          *
- *   You should have received a copy of the GNU General Public license      *
- *   along with this program.  If not, see <https://www.gnu.org/licenses/>. *
- *                                                                          *
- ****************************************************************************/
+/********************************************************************************
+ * This file is part of SlabRender                                              *
+ *                                                                              *
+ * Author: Ivo Filot <i.a.w.filot@tue.nl>                                       *
+ *                                                                              *
+ * This program is free software; you can redistribute it and/or                *
+ * modify it under the terms of the GNU Lesser General Public                   *
+ * License as published by the Free Software Foundation; either                 *
+ * version 3 of the License, or (at your option) any later version.             *
+ *                                                                              *
+ * This program is distributed in the hope that it will be useful,              *
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of               *
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU            *
+ * Lesser General Public License for more details.                              *
+ *                                                                              *
+ * You should have received a copy of the GNU Lesser General Public License     *
+ * along with this program; if not, write to the Free Software Foundation,      *
+ * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.          *
+ ********************************************************************************/
 
-#ifndef _MODEL_H
-#define _MODEL_H
+#pragma once
 
 #include <QOpenGLFunctions>
 #include <QOpenGLVertexArrayObject>
@@ -75,6 +74,9 @@ public:
      */
     Model(std::vector<glm::vec3> positions, std::vector<glm::vec3> normals, std::vector<unsigned int> indices);
 
+    /**
+     * @brief add_instance.
+     */
     void add_instance(const glm::vec3& scale, const glm::mat4& rotation, const glm::vec3& translation, const glm::vec4& color);
 
     /**
@@ -109,6 +111,9 @@ public:
                              const glm::vec4& _color) {
 
         if(id >= this->instances.size()) {
+            /**
+             * @brief runtime_error.
+             */
             throw std::runtime_error("id exceeds vector length");
         }
 
@@ -140,25 +145,38 @@ public:
      */
     void load_to_vao();
 
+    /**
+     * @brief get_instances.
+     */
     inline const auto& get_instances() const {
         return this->instances;
     }
 
+    /**
+     * @brief get_num_vertices.
+     */
     inline size_t get_num_vertices() const {
         return this->positions.size();
     }
 
+    /**
+     * @brief get_num_normals.
+     */
     inline size_t get_num_normals() const {
         return this->normals.size();
     }
 
+    /**
+     * @brief get_num_indices.
+     */
     inline size_t get_num_indices() const {
         return this->indices.size();
     }
 
+    /**
+     * @brief is_loaded.
+     */
     inline bool is_loaded() const {
         return this->flag_loaded_vao;
     }
 };
-
-#endif // _MODEL_H

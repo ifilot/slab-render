@@ -1,5 +1,5 @@
 /********************************************************************************
- * This file is part of Saucepan                                                *
+ * This file is part of SlabRender                                                *
  *                                                                              *
  * Author: Ivo Filot <i.a.w.filot@tue.nl>                                       *
  *                                                                              *
@@ -55,6 +55,9 @@ LogWindow::LogWindow(const std::shared_ptr<QStringList>& _log_messages) :
     timer->start(1000);
 }
 
+/**
+ * @brief update_log.
+ */
 void LogWindow::update_log() {
     int newsize = this->log_messages->size();
     for(int i=this->linesread; i<newsize; i++) {

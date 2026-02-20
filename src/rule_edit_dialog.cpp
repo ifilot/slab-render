@@ -1,3 +1,23 @@
+/********************************************************************************
+ * This file is part of SlabRender                                              *
+ *                                                                              *
+ * Author: Ivo Filot <i.a.w.filot@tue.nl>                                       *
+ *                                                                              *
+ * This program is free software; you can redistribute it and/or                *
+ * modify it under the terms of the GNU Lesser General Public                   *
+ * License as published by the Free Software Foundation; either                 *
+ * version 3 of the License, or (at your option) any later version.             *
+ *                                                                              *
+ * This program is distributed in the hope that it will be useful,              *
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of               *
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU            *
+ * Lesser General Public License for more details.                              *
+ *                                                                              *
+ * You should have received a copy of the GNU Lesser General Public License     *
+ * along with this program; if not, write to the Free Software Foundation,      *
+ * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.          *
+ ********************************************************************************/
+
 #include "rule_edit_dialog.h"
 #include "periodic_table_dialog.h"
 #include "color_picker_dialog.h"
@@ -107,6 +127,9 @@ RuleEditDialog::RuleEditDialog(
             this, &QDialog::reject);
 }
 
+/**
+ * @brief slot_select_element.
+ */
 void RuleEditDialog::slot_select_element() {
     PeriodicTableDialog dlg(this);
     if (dlg.exec() == QDialog::Accepted) {
@@ -115,6 +138,9 @@ void RuleEditDialog::slot_select_element() {
     }
 }
 
+/**
+ * @brief slot_select_color.
+ */
 void RuleEditDialog::slot_select_color() {
     ColorPickerDialog dlg(color_, this);
     if (dlg.exec() == QDialog::Accepted) {
@@ -123,6 +149,9 @@ void RuleEditDialog::slot_select_color() {
     }
 }
 
+/**
+ * @brief update_color_button.
+ */
 void RuleEditDialog::update_color_button() {
     btn_color->setText(color_.name());
     btn_color->setStyleSheet(
@@ -139,22 +168,37 @@ void RuleEditDialog::update_color_button() {
 
 // --- Getters ---
 
+/**
+ * @brief element.
+ */
 QString RuleEditDialog::element() const {
     return element_;
 }
 
+/**
+ * @brief from.
+ */
 int RuleEditDialog::from() const {
     return spin_from->value();
 }
 
+/**
+ * @brief to.
+ */
 int RuleEditDialog::to() const {
     return spin_to->value();
 }
 
+/**
+ * @brief color.
+ */
 QColor RuleEditDialog::color() const {
     return color_;
 }
 
+/**
+ * @brief radius.
+ */
 double RuleEditDialog::radius() const {
     return spin_radius ? spin_radius->value() : 0.0;
 }

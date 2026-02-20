@@ -1,5 +1,5 @@
 /********************************************************************************
- * This file is part of Saucepan                                                *
+ * This file is part of SlabRender                                                *
  *                                                                              *
  * Author: Ivo Filot <i.a.w.filot@tue.nl>                                       *
  *                                                                              *
@@ -42,6 +42,9 @@ public:
     Vec3d axis;
     double angle;
 
+   /**
+    * @brief Bond.
+    */
     Bond(const Atom& _atom1, const Atom& _atom2, uint16_t i, uint16_t j);
 
 private:

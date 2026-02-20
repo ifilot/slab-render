@@ -1,5 +1,5 @@
 /********************************************************************************
- * This file is part of Saucepan                                                *
+ * This file is part of SlabRender                                                *
  *                                                                              *
  * Author: Ivo Filot <i.a.w.filot@tue.nl>                                       *
  *                                                                              *
@@ -26,6 +26,9 @@ StructureLoader::StructureLoader() {
 
 }
 
+/**
+ * @brief load_file.
+ */
 std::vector<std::shared_ptr<Structure>> StructureLoader::load_file(const QString& path) {
     QFileInfo file_info(path);
     QString filename = file_info.fileName();

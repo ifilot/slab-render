@@ -1,5 +1,5 @@
 /********************************************************************************
- * This file is part of Saucepan                                                *
+ * This file is part of SlabRender                                                *
  *                                                                              *
  * Author: Ivo Filot <i.a.w.filot@tue.nl>                                       *
  *                                                                              *
@@ -36,6 +36,9 @@ AtomSettings::AtomSettings() {
     this->reset();
 }
 
+/**
+ * @brief reset.
+ */
 void AtomSettings::reset() {
     this->load();
 
@@ -211,10 +214,16 @@ std::string AtomSettings::get_name_from_elnr(unsigned int elnr) const {
     return this->root.get<std::string>("atoms.nr2element." + boost::lexical_cast<std::string>(elnr));
 }
 
+/**
+ * @brief get_atom_color_from_elnr.
+ */
 const QVector3D& AtomSettings::get_atom_color_from_elnr(unsigned int elnr) const {
     return this->colors[elnr];
 }
 
+/**
+ * @brief hexcode_to_vector3d.
+ */
 QVector3D AtomSettings::hexcode_to_vector3d(const std::string& hexcode) const {
     if(hexcode.size() != 6) {
         throw std::runtime_error("Invalid hexcode received: " + hexcode);

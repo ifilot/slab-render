@@ -1,5 +1,5 @@
 /********************************************************************************
- * This file is part of Saucepan                                                *
+ * This file is part of SlabRender                                                *
  *                                                                              *
  * Author: Ivo Filot <i.a.w.filot@tue.nl>                                       *
  *                                                                              *
@@ -24,10 +24,16 @@
 #include <QJsonParseError>
 #include <QFile>
 
+/**
+ * @brief ThreadRenderImage.
+ */
 ThreadRenderImage::ThreadRenderImage() {
 
 }
 
+/**
+ * @brief run.
+ */
 void ThreadRenderImage::run() {
     qDebug() << "Running Blender for " << this->files.count() << " structures.";
     for(int i=0; i<this->files.count(); i++) {
@@ -108,6 +114,9 @@ void ThreadRenderImage::run() {
     emit(signal_queue_done());
 }
 
+/**
+ * @brief build_process.
+ */
 QProcess* ThreadRenderImage::build_process(const QString& contcarfile) {
     QString cwd = this->copy_template_files(contcarfile);
     QStringList arguments = {"-b", "axes_template.blend", "-P", "render_image.py", "--", "manifest.json", "atompack.bin", cwd + "/image.png"};
@@ -120,6 +129,9 @@ QProcess* ThreadRenderImage::build_process(const QString& contcarfile) {
     return blender_process;
 }
 
+/**
+ * @brief copy_template_files.
+ */
 QString ThreadRenderImage::copy_template_files(const QString& contcarfile) {
     QTemporaryDir dir;
     dir.setAutoRemove(false); // do not immediately remove
@@ -161,6 +173,9 @@ QString ThreadRenderImage::copy_template_files(const QString& contcarfile) {
     return QDir::cleanPath(dir.path());
 }
 
+/**
+ * @brief create_atompack.
+ */
 void ThreadRenderImage::create_atompack(const QString& path) {
     qDebug() << "Converting CONTCAR to atompack.bin for " << path;
     try {

@@ -1,5 +1,28 @@
+/********************************************************************************
+ * This file is part of SlabRender                                              *
+ *                                                                              *
+ * Author: Ivo Filot <i.a.w.filot@tue.nl>                                       *
+ *                                                                              *
+ * This program is free software; you can redistribute it and/or                *
+ * modify it under the terms of the GNU Lesser General Public                   *
+ * License as published by the Free Software Foundation; either                 *
+ * version 3 of the License, or (at your option) any later version.             *
+ *                                                                              *
+ * This program is distributed in the hope that it will be useful,              *
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of               *
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU            *
+ * Lesser General Public License for more details.                              *
+ *                                                                              *
+ * You should have received a copy of the GNU Lesser General Public License     *
+ * along with this program; if not, write to the Free Software Foundation,      *
+ * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.          *
+ ********************************************************************************/
+
 #include "jobinfowidget.h"
 
+/**
+ * @brief JobInfoWidget.
+ */
 JobInfoWidget::JobInfoWidget(QWidget *parent) : QTabWidget(parent) {
     // create info tab
     QWidget* widget_info_container = new QWidget();
@@ -59,6 +82,9 @@ void JobInfoWidget::rebuild_structures() {
     this->anaglyph_widget->update();
 }
 
+/**
+ * @brief slot_update_job_info.
+ */
 void JobInfoWidget::slot_update_job_info(int job_id) {
     qDebug() << "Updating job info for job id: " << job_id;
     if(this->process_job_queue != nullptr) {
@@ -85,11 +111,17 @@ void JobInfoWidget::slot_update_job_info(int job_id) {
     }
 }
 
+/**
+ * @brief slot_update_atom_label.
+ */
 void JobInfoWidget::slot_update_atom_label(int atom_id) {
     const Atom& atom = this->anaglyph_widget->get_structure()->get_atom(atom_id);
     this->label_selected_atom->setText(tr("Selected atom: %1 (#%2)").arg(AtomSettings::get().get_name_from_elnr(atom.atnr).c_str()).arg(atom_id+1));
 }
 
+/**
+ * @brief slot_show_path_in_explorer_window.
+ */
 void JobInfoWidget::slot_show_path_in_explorer_window() {
     QString path = this->label_job_path->text();
     QFile file(path);
@@ -99,6 +131,9 @@ void JobInfoWidget::slot_show_path_in_explorer_window() {
     }
 }
 
+/**
+ * @brief slot_save_image.
+ */
 void JobInfoWidget::slot_save_image() {
     QString imagepath = QFileInfo(this->label_job_path->text()).absoluteDir().path() + "/image.png";
     QFile imagefile(imagepath);

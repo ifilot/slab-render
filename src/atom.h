@@ -1,5 +1,5 @@
 /********************************************************************************
- * This file is part of Saucepan                                                *
+ * This file is part of SlabRender                                                *
  *                                                                              *
  * Author: Ivo Filot <i.a.w.filot@tue.nl>                                       *
  *                                                                              *
@@ -38,6 +38,9 @@ public:
     unsigned int select = 0;
     std::array<bool, 3> selective_dynamics = {true, true, true};
 
+   /**
+    * @brief Atom.
+    */
     Atom(unsigned int _atnr, double _x, double _y, double _z, unsigned int _atomtype = (1 << ATOM_CENTRAL_UNITCELL));
 
     /**

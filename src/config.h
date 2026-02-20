@@ -1,5 +1,5 @@
 /********************************************************************************
- * This file is part of Saucepan                                                *
+ * This file is part of SlabRender                                                *
  *                                                                              *
  * Author: Ivo Filot <i.a.w.filot@tue.nl>                                       *
  *                                                                              *
@@ -18,13 +18,10 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.          *
  ********************************************************************************/
 
-#ifndef CONFIG_H
-#define CONFIG_H
+#pragma once
 
 #define PROGRAM_NAME "SlabRender"
 #define PROGRAM_NAME_LC "slabrender"
 #define PROGRAM_VERSION "0.2.0"
 
 #define UNUSED(x) (void)(x)
-
-#endif // CONFIG_H

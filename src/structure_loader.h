@@ -1,5 +1,5 @@
 /********************************************************************************
- * This file is part of Saucepan                                                *
+ * This file is part of SlabRender                                                *
  *                                                                              *
  * Author: Ivo Filot <i.a.w.filot@tue.nl>                                       *
  *                                                                              *
@@ -50,6 +50,9 @@ public:
      */
     StructureLoader();
 
+    /**
+     * @brief load_file.
+     */
     std::vector<std::shared_ptr<Structure>> load_file(const QString& path);
 
     /**

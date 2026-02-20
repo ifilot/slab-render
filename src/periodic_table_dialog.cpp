@@ -1,3 +1,23 @@
+/********************************************************************************
+ * This file is part of SlabRender                                              *
+ *                                                                              *
+ * Author: Ivo Filot <i.a.w.filot@tue.nl>                                       *
+ *                                                                              *
+ * This program is free software; you can redistribute it and/or                *
+ * modify it under the terms of the GNU Lesser General Public                   *
+ * License as published by the Free Software Foundation; either                 *
+ * version 3 of the License, or (at your option) any later version.             *
+ *                                                                              *
+ * This program is distributed in the hope that it will be useful,              *
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of               *
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU            *
+ * Lesser General Public License for more details.                              *
+ *                                                                              *
+ * You should have received a copy of the GNU Lesser General Public License     *
+ * along with this program; if not, write to the Free Software Foundation,      *
+ * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.          *
+ ********************************************************************************/
+
 #include "periodic_table_dialog.h"
 #include "atom_settings.h"
 
@@ -136,6 +156,9 @@ PeriodicTableDialog::PeriodicTableDialog(QWidget* parent)
     build_ui();
 }
 
+/**
+ * @brief build_ui.
+ */
 void PeriodicTableDialog::build_ui() {
     auto* main = new QVBoxLayout(this);
 
@@ -195,6 +218,9 @@ void PeriodicTableDialog::add_placeholder(
     grid_->addWidget(btn, row, col);
 }
 
+/**
+ * @brief add_element.
+ */
 void PeriodicTableDialog::add_element(int row, int col, unsigned int elnr) {
     const auto& settings = AtomSettings::get();
     const QString symbol =
@@ -232,6 +258,9 @@ void PeriodicTableDialog::add_element(int row, int col, unsigned int elnr) {
     grid_->addWidget(btn, row, col);
 }
 
+/**
+ * @brief selectedElement.
+ */
 QString PeriodicTableDialog::selectedElement() const {
     return selected_;
 }

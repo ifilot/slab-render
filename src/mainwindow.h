@@ -1,5 +1,5 @@
 /********************************************************************************
- * This file is part of Saucepan                                                *
+ * This file is part of SlabRender                                                *
  *                                                                              *
  * Author: Ivo Filot <i.a.w.filot@tue.nl>                                       *
  *                                                                              *
@@ -18,8 +18,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.          *
  ********************************************************************************/
 
-#ifndef MAINWINDOW_H
-#define MAINWINDOW_H
+#pragma once
 
 #include <QApplication>
 #include <QMainWindow>
@@ -130,13 +129,25 @@ private:
 public:
     MainWindow(const std::shared_ptr<QStringList> _log_messages,
                QWidget *parent = nullptr);
+    /**
+     * @brief MainWindow.
+     */
     ~MainWindow();
 
 private:
+    /**
+     * @brief build_dropdown_menu.
+     */
     void build_dropdown_menu();
 
+    /**
+     * @brief build_blender_settings_panel.
+     */
     void build_blender_settings_panel(QVBoxLayout* layout);
 
+    /**
+     * @brief find_blender_executable.
+     */
     QStringList find_blender_executable();
 
     /**
@@ -144,40 +155,93 @@ private:
      */
     QStringList find_files(const QString& path, const QStringList& filenames);
 
+    /**
+     * @brief fetch_tooltip_text.
+     */
     QString fetch_tooltip_text(const QString& filename);
 
 private slots:
+    /**
+     * @brief slot_select_folder.
+     */
     void slot_select_folder();
 
+    /**
+     * @brief slot_parse_files.
+     */
     void slot_parse_files();
 
+    /**
+     * @brief slot_parse_single_job.
+     */
     void slot_parse_single_job();
 
+    /**
+     * @brief slot_job_start.
+     */
     void slot_job_start(int jobid);
 
+    /**
+     * @brief slot_job_done.
+     */
     void slot_job_done(int jobid);
 
+    /**
+     * @brief slot_queue_done.
+     */
     void slot_queue_done();
 
+    /**
+     * @brief slot_probe_gpu.
+     */
     void slot_probe_gpu();
 
+    /**
+     * @brief slot_change_ortho_scale.
+     */
     void slot_change_ortho_scale(int item_id);
 
+    /**
+     * @brief slot_update_custom_zoom_level.
+     */
     void slot_update_custom_zoom_level();
+    /**
+     * @brief slot_update_custom_euler.
+     */
     void slot_update_custom_euler();
+    /**
+     * @brief slot_set_custom_euler.
+     */
     void slot_set_custom_euler();
 
+    /**
+     * @brief slot_cancel_queue.
+     */
     void slot_cancel_queue();
 
+    /**
+     * @brief slot_queue_cancelled.
+     */
     void slot_queue_cancelled();
 
+    /**
+     * @brief slot_exit.
+     */
     void slot_exit();
 
+    /**
+     * @brief slot_debug_log.
+     */
     void slot_debug_log();
 
+    /**
+     * @brief slot_about.
+     */
     void slot_about();
 
 private:
+    /**
+     * @brief build_custom_json.
+     */
     QJsonObject build_custom_json() const;
 };
-#endif // MAINWINDOW_H

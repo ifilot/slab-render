@@ -1,3 +1,23 @@
+/********************************************************************************
+ * This file is part of SlabRender                                              *
+ *                                                                              *
+ * Author: Ivo Filot <i.a.w.filot@tue.nl>                                       *
+ *                                                                              *
+ * This program is free software; you can redistribute it and/or                *
+ * modify it under the terms of the GNU Lesser General Public                   *
+ * License as published by the Free Software Foundation; either                 *
+ * version 3 of the License, or (at your option) any later version.             *
+ *                                                                              *
+ * This program is distributed in the hope that it will be useful,              *
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of               *
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU            *
+ * Lesser General Public License for more details.                              *
+ *                                                                              *
+ * You should have received a copy of the GNU Lesser General Public License     *
+ * along with this program; if not, write to the Free Software Foundation,      *
+ * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.          *
+ ********************************************************************************/
+
 #include "render_atoms_widget.h"
 #include "rule_item_widget.h"
 #include "periodic_table_dialog.h"
@@ -18,6 +38,9 @@ RenderAtomsWidget::RenderAtomsWidget(QWidget* parent)
     build_ui();
 }
 
+/**
+ * @brief build_ui.
+ */
 void RenderAtomsWidget::build_ui() {
     auto* layout = new QVBoxLayout(this);
 
@@ -41,6 +64,9 @@ void RenderAtomsWidget::build_ui() {
     layout->addWidget(rule_list);
 }
 
+/**
+ * @brief format_color_rule.
+ */
 QString RenderAtomsWidget::format_color_rule(const AtomColorRule& r) const {
     return QString(
         "<b>Color</b> <i>%1</i> [%2–%3] → %4"
@@ -51,6 +77,9 @@ QString RenderAtomsWidget::format_color_rule(const AtomColorRule& r) const {
         .arg(r.color.name());
 }
 
+/**
+ * @brief format_radius_rule.
+ */
 QString RenderAtomsWidget::format_radius_rule(const AtomRadiusRule& r) const {
     return QString(
         "<b>Radius</b> <i>%1</i> [%2–%3] → %4 Å"
@@ -94,6 +123,9 @@ void RenderAtomsWidget::add_rule_item(
     });
 }
 
+/**
+ * @brief slot_add_color_rule.
+ */
 void RenderAtomsWidget::slot_add_color_rule() {
     PeriodicTableDialog dlg(this);
     if (dlg.exec() != QDialog::Accepted)
@@ -124,6 +156,9 @@ void RenderAtomsWidget::slot_add_color_rule() {
     emit rulesChanged();
 }
 
+/**
+ * @brief slot_add_radius_rule.
+ */
 void RenderAtomsWidget::slot_add_radius_rule() {
     PeriodicTableDialog dlg(this);
     if (dlg.exec() != QDialog::Accepted)
@@ -160,6 +195,9 @@ void RenderAtomsWidget::slot_add_radius_rule() {
     emit rulesChanged();
 }
 
+/**
+ * @brief delete_rule.
+ */
 void RenderAtomsWidget::delete_rule(QListWidgetItem* item) {
     RuleType type =
         static_cast<RuleType>(item->data(Qt::UserRole).toInt());
@@ -176,6 +214,9 @@ void RenderAtomsWidget::delete_rule(QListWidgetItem* item) {
     emit rulesChanged();
 }
 
+/**
+ * @brief edit_rule.
+ */
 void RenderAtomsWidget::edit_rule(QListWidgetItem* item) {
     RuleType type =
         static_cast<RuleType>(item->data(Qt::UserRole).toInt());
@@ -247,6 +288,9 @@ void RenderAtomsWidget::edit_rule(QListWidgetItem* item) {
     emit rulesChanged();
 }
 
+/**
+ * @brief rebuild_rule_indices.
+ */
 void RenderAtomsWidget::rebuild_rule_indices() {
     int color_index = 0;
     int radius_index = 0;
@@ -264,6 +308,9 @@ void RenderAtomsWidget::rebuild_rule_indices() {
     }
 }
 
+/**
+ * @brief generate_json.
+ */
 QString RenderAtomsWidget::generate_json() const {
     QJsonObject root;
 

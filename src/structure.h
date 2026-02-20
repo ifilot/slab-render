@@ -1,5 +1,5 @@
 /********************************************************************************
- * This file is part of Saucepan                                                *
+ * This file is part of SlabRender                                                *
  *                                                                              *
  * Author: Ivo Filot <i.a.w.filot@tue.nl>                                       *
  *                                                                              *
@@ -168,6 +168,9 @@ public:
      * @param[in]  fy    force in y direction
      * @param[in]  fz    force in z direction
      */
+    /**
+     * @brief add_atom.
+     */
     void add_atom(unsigned int atnr, double x, double y, double z, double fx, double fy, double fz);
 
     /**
@@ -180,6 +183,9 @@ public:
      * @param[in]  sx    Selective dynamics x direction
      * @param[in]  sy    Selective dynamics y direction
      * @param[in]  sz    Selective dynamics z direction
+     */
+    /**
+     * @brief add_atom.
      */
     void add_atom(unsigned int atnr, double x, double y, double z, bool sx, bool sy, bool sz);
 

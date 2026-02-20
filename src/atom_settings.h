@@ -1,5 +1,5 @@
 /********************************************************************************
- * This file is part of Saucepan                                                *
+ * This file is part of SlabRender                                                *
  *                                                                              *
  * Author: Ivo Filot <i.a.w.filot@tue.nl>                                       *
  *                                                                              *
@@ -154,6 +154,9 @@ private:
      */
     void load();
 
+    /**
+     * @brief hexcode_to_vector3d.
+     */
     QVector3D hexcode_to_vector3d(const std::string& hexcode) const;
 
     // delete copy constructor

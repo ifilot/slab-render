@@ -1,5 +1,5 @@
 /********************************************************************************
- * This file is part of Saucepan                                                *
+ * This file is part of SlabRender                                                *
  *                                                                              *
  * Author: Ivo Filot <i.a.w.filot@tue.nl>                                       *
  *                                                                              *
@@ -18,8 +18,7 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.          *
  ********************************************************************************/
 
-#ifndef LOGWINDOW_H
-#define LOGWINDOW_H
+#pragma once
 
 #include <QObject>
 #include <QWidget>
@@ -42,10 +41,14 @@ private:
 public:
     LogWindow(){}
 
+   /**
+    * @brief LogWindow.
+    */
     LogWindow(const std::shared_ptr<QStringList>& _log_messages);
 
 private slots:
+    /**
+     * @brief update_log.
+     */
     void update_log();
 };
-
-#endif // LOGWINDOW_H

@@ -1,5 +1,5 @@
 /********************************************************************************
- * This file is part of Saucepan                                                *
+ * This file is part of SlabRender                                                *
  *                                                                              *
  * Author: Ivo Filot <i.a.w.filot@tue.nl>                                       *
  *                                                                              *
@@ -20,9 +20,6 @@
 
 #include "structure.h"
 
-/**
- * @brief      Constructs a new instance.
- */
 Structure::Structure(const MatrixUnitcell& _unitcell, bool _localized) :
 unitcell(_unitcell),
 localized(_localized) {}
@@ -72,6 +69,9 @@ void Structure::add_atom(unsigned int atnr, double x, double y, double z) {
  * @param[in]  fy    force in y direction
  * @param[in]  fz    force in z direction
  */
+/**
+ * @brief add_atom.
+ */
 void Structure::add_atom(unsigned int atnr, double x, double y, double z, double fx, double fy, double fz) {
     this->add_atom(atnr, x, y, z);
     this->atoms.back().fx = fx;
@@ -89,6 +89,9 @@ void Structure::add_atom(unsigned int atnr, double x, double y, double z, double
  * @param[in]  sx    Selective dynamics x direction
  * @param[in]  sy    Selective dynamics y direction
  * @param[in]  sz    Selective dynamics z direction
+ */
+/**
+ * @brief add_atom.
  */
 void Structure::add_atom(unsigned int atnr, double x, double y, double z, bool sx, bool sy, bool sz) {
     this->add_atom(atnr, x, y, z);
