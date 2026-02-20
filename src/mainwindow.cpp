@@ -344,6 +344,8 @@ void MainWindow::build_blender_settings_panel(QVBoxLayout* layout) {
     rownr++;
     render_atoms_widget = new RenderAtomsWidget();
     layout_blender_settings->addWidget(render_atoms_widget, rownr, 0, 1, 3);
+    connect(render_atoms_widget, &RenderAtomsWidget::rulesChanged,
+            this, &MainWindow::slot_sync_atom_render_rules);
 
     QFrame* frame = new QFrame();
     layout->addWidget(frame);
@@ -756,6 +758,21 @@ void MainWindow::slot_set_custom_euler() {
         QVector3D(this->spinbox_custom_euler_x->value(),
                   this->spinbox_custom_euler_y->value(),
                   this->spinbox_custom_euler_z->value()));
+}
+
+/**
+ * @brief slot_sync_atom_render_rules.
+ */
+void MainWindow::slot_sync_atom_render_rules() {
+    AtomSettings::get().reset();
+    AtomSettings::get().overwrite(this->render_atoms_widget->generate_json().toStdString());
+
+    auto structure = this->widget_job_info->get_anaglyph_widget()->get_structure();
+    if(structure) {
+        structure->update();
+    }
+
+    this->widget_job_info->get_anaglyph_widget()->update();
 }
 
 /**

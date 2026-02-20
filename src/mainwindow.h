@@ -215,6 +215,11 @@ private slots:
     void slot_set_custom_euler();
 
     /**
+     * @brief slot_sync_atom_render_rules.
+     */
+    void slot_sync_atom_render_rules();
+
+    /**
      * @brief slot_cancel_queue.
      */
     void slot_cancel_queue();
