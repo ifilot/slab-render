@@ -82,11 +82,15 @@ private:
     QComboBox* combobox_atom_material;
     QComboBox* combobox_bond_material;
     QPushButton* button_background_color;
-    QPushButton* button_light_color;
-    QDoubleSpinBox* spinbox_light_intensity;
-    QDoubleSpinBox* spinbox_light_area_size;
+    QPushButton* button_light_left_color;
+    QPushButton* button_light_right_color;
+    QDoubleSpinBox* spinbox_light_left_intensity;
+    QDoubleSpinBox* spinbox_light_right_intensity;
+    QDoubleSpinBox* spinbox_light_left_area_size;
+    QDoubleSpinBox* spinbox_light_right_area_size;
     QColor background_color = QColor(204, 204, 204);
-    QColor light_color = QColor(255, 255, 255);
+    QColor light_left_color = QColor(255, 255, 255);
+    QColor light_right_color = QColor(255, 255, 255);
     QLabel* label_valid_json;
 
     // storage for log messages

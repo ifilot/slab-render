@@ -336,37 +336,76 @@ void MainWindow::build_blender_settings_panel(QVBoxLayout* layout) {
     });
 
     rownr++;
-    layout_blender_settings->addWidget(new QLabel("Light color"), rownr, 0);
-    this->button_light_color = new QPushButton();
-    this->button_light_color->setText(this->light_color.name(QColor::HexRgb).toUpper());
-    this->update_color_button_style(this->button_light_color, this->light_color);
-    layout_blender_settings->addWidget(this->button_light_color, rownr, 1);
-    connect(this->button_light_color, &QPushButton::released, this, [this]() {
-        ColorPickerDialog dlg(this->light_color, this);
+    QGroupBox* groupbox_lighting = new QGroupBox("lighting");
+    layout_blender_settings->addWidget(groupbox_lighting, rownr, 0, 1, 2);
+    QGridLayout* layout_lighting = new QGridLayout();
+    groupbox_lighting->setLayout(layout_lighting);
+
+    int light_row = 0;
+    layout_lighting->addWidget(new QLabel("Left light color"), light_row, 0);
+    this->button_light_left_color = new QPushButton();
+    this->button_light_left_color->setText(this->light_left_color.name(QColor::HexRgb).toUpper());
+    this->update_color_button_style(this->button_light_left_color, this->light_left_color);
+    layout_lighting->addWidget(this->button_light_left_color, light_row, 1);
+    connect(this->button_light_left_color, &QPushButton::released, this, [this]() {
+        ColorPickerDialog dlg(this->light_left_color, this);
         if(dlg.exec() == QDialog::Accepted) {
-            this->light_color = dlg.color();
-            this->button_light_color->setText(this->light_color.name(QColor::HexRgb).toUpper());
-            this->update_color_button_style(this->button_light_color, this->light_color);
+            this->light_left_color = dlg.color();
+            this->button_light_left_color->setText(this->light_left_color.name(QColor::HexRgb).toUpper());
+            this->update_color_button_style(this->button_light_left_color, this->light_left_color);
         }
     });
 
-    rownr++;
-    layout_blender_settings->addWidget(new QLabel("Relative light intensity"), rownr, 0);
-    this->spinbox_light_intensity = new QDoubleSpinBox();
-    this->spinbox_light_intensity->setRange(0.0, 100000.0);
-    this->spinbox_light_intensity->setDecimals(2);
-    this->spinbox_light_intensity->setSingleStep(0.1);
-    this->spinbox_light_intensity->setValue(50.0);
-    layout_blender_settings->addWidget(this->spinbox_light_intensity, rownr, 1);
+    light_row++;
+    layout_lighting->addWidget(new QLabel("Right light color"), light_row, 0);
+    this->button_light_right_color = new QPushButton();
+    this->button_light_right_color->setText(this->light_right_color.name(QColor::HexRgb).toUpper());
+    this->update_color_button_style(this->button_light_right_color, this->light_right_color);
+    layout_lighting->addWidget(this->button_light_right_color, light_row, 1);
+    connect(this->button_light_right_color, &QPushButton::released, this, [this]() {
+        ColorPickerDialog dlg(this->light_right_color, this);
+        if(dlg.exec() == QDialog::Accepted) {
+            this->light_right_color = dlg.color();
+            this->button_light_right_color->setText(this->light_right_color.name(QColor::HexRgb).toUpper());
+            this->update_color_button_style(this->button_light_right_color, this->light_right_color);
+        }
+    });
 
-    rownr++;
-    layout_blender_settings->addWidget(new QLabel("Light area size"), rownr, 0);
-    this->spinbox_light_area_size = new QDoubleSpinBox();
-    this->spinbox_light_area_size->setRange(0.01, 10000.0);
-    this->spinbox_light_area_size->setDecimals(2);
-    this->spinbox_light_area_size->setSingleStep(0.1);
-    this->spinbox_light_area_size->setValue(25.0);
-    layout_blender_settings->addWidget(this->spinbox_light_area_size, rownr, 1);
+    light_row++;
+    layout_lighting->addWidget(new QLabel("Left light intensity"), light_row, 0);
+    this->spinbox_light_left_intensity = new QDoubleSpinBox();
+    this->spinbox_light_left_intensity->setRange(0.0, 100000.0);
+    this->spinbox_light_left_intensity->setDecimals(2);
+    this->spinbox_light_left_intensity->setSingleStep(1.0);
+    this->spinbox_light_left_intensity->setValue(10000.0);
+    layout_lighting->addWidget(this->spinbox_light_left_intensity, light_row, 1);
+
+    light_row++;
+    layout_lighting->addWidget(new QLabel("Right light intensity"), light_row, 0);
+    this->spinbox_light_right_intensity = new QDoubleSpinBox();
+    this->spinbox_light_right_intensity->setRange(0.0, 100000.0);
+    this->spinbox_light_right_intensity->setDecimals(2);
+    this->spinbox_light_right_intensity->setSingleStep(1.0);
+    this->spinbox_light_right_intensity->setValue(10000.0);
+    layout_lighting->addWidget(this->spinbox_light_right_intensity, light_row, 1);
+
+    light_row++;
+    layout_lighting->addWidget(new QLabel("Left light area size"), light_row, 0);
+    this->spinbox_light_left_area_size = new QDoubleSpinBox();
+    this->spinbox_light_left_area_size->setRange(0.01, 10000.0);
+    this->spinbox_light_left_area_size->setDecimals(2);
+    this->spinbox_light_left_area_size->setSingleStep(0.5);
+    this->spinbox_light_left_area_size->setValue(50.0);
+    layout_lighting->addWidget(this->spinbox_light_left_area_size, light_row, 1);
+
+    light_row++;
+    layout_lighting->addWidget(new QLabel("Right light area size"), light_row, 0);
+    this->spinbox_light_right_area_size = new QDoubleSpinBox();
+    this->spinbox_light_right_area_size->setRange(0.01, 10000.0);
+    this->spinbox_light_right_area_size->setDecimals(2);
+    this->spinbox_light_right_area_size->setSingleStep(0.5);
+    this->spinbox_light_right_area_size->setValue(25.0);
+    layout_lighting->addWidget(this->spinbox_light_right_area_size, light_row, 1);
 
     // --- Custom atom rendering rules ---
     rownr++;
@@ -503,9 +542,12 @@ void MainWindow::slot_parse_files() {
     parameters.insert("atmat", QVariant(this->combobox_atom_material->currentText()));
     parameters.insert("bondmat", QVariant(this->combobox_bond_material->currentText()));
     parameters.insert("scene_background_color", QVariant(this->background_color.name(QColor::HexRgb)));
-    parameters.insert("light_color", QVariant(this->light_color.name(QColor::HexRgb)));
-    parameters.insert("relative_light_intensity", QVariant(this->spinbox_light_intensity->value()));
-    parameters.insert("light_area_size", QVariant(this->spinbox_light_area_size->value()));
+    parameters.insert("light_left_color", QVariant(this->light_left_color.name(QColor::HexRgb)));
+    parameters.insert("light_right_color", QVariant(this->light_right_color.name(QColor::HexRgb)));
+    parameters.insert("light_left_intensity", QVariant(this->spinbox_light_left_intensity->value()));
+    parameters.insert("light_right_intensity", QVariant(this->spinbox_light_right_intensity->value()));
+    parameters.insert("light_left_area_size", QVariant(this->spinbox_light_left_area_size->value()));
+    parameters.insert("light_right_area_size", QVariant(this->spinbox_light_right_area_size->value()));
     parameters.insert("custom_json", QVariant(QString(QJsonDocument(this->build_custom_json()).toJson(QJsonDocument::Indented))));
 
     // set icon when jobs are in queue
@@ -574,9 +616,12 @@ void MainWindow::slot_parse_single_job() {
     parameters.insert("atmat", QVariant(this->combobox_atom_material->currentText()));
     parameters.insert("bondmat", QVariant(this->combobox_bond_material->currentText()));
     parameters.insert("scene_background_color", QVariant(this->background_color.name(QColor::HexRgb)));
-    parameters.insert("light_color", QVariant(this->light_color.name(QColor::HexRgb)));
-    parameters.insert("relative_light_intensity", QVariant(this->spinbox_light_intensity->value()));
-    parameters.insert("light_area_size", QVariant(this->spinbox_light_area_size->value()));
+    parameters.insert("light_left_color", QVariant(this->light_left_color.name(QColor::HexRgb)));
+    parameters.insert("light_right_color", QVariant(this->light_right_color.name(QColor::HexRgb)));
+    parameters.insert("light_left_intensity", QVariant(this->spinbox_light_left_intensity->value()));
+    parameters.insert("light_right_intensity", QVariant(this->spinbox_light_right_intensity->value()));
+    parameters.insert("light_left_area_size", QVariant(this->spinbox_light_left_area_size->value()));
+    parameters.insert("light_right_area_size", QVariant(this->spinbox_light_right_area_size->value()));
     parameters.insert("custom_json", QVariant(QString(QJsonDocument(this->build_custom_json()).toJson(QJsonDocument::Indented))));
 
     // set icon when jobs are in queue
@@ -911,9 +956,12 @@ QJsonObject MainWindow::build_custom_json() const {
     }
 
     root["scene_background_color"] = this->background_color.name(QColor::HexRgb);
-    root["light_color"] = this->light_color.name(QColor::HexRgb);
-    root["relative_light_intensity"] = this->spinbox_light_intensity->value();
-    root["light_area_size"] = this->spinbox_light_area_size->value();
+    root["light_left_color"] = this->light_left_color.name(QColor::HexRgb);
+    root["light_right_color"] = this->light_right_color.name(QColor::HexRgb);
+    root["light_left_intensity"] = this->spinbox_light_left_intensity->value();
+    root["light_right_intensity"] = this->spinbox_light_right_intensity->value();
+    root["light_left_area_size"] = this->spinbox_light_left_area_size->value();
+    root["light_right_area_size"] = this->spinbox_light_right_area_size->value();
 
     return root;
 }
@@ -986,9 +1034,12 @@ QJsonObject MainWindow::collect_render_settings_json() const {
     settings["atom_material"] = this->combobox_atom_material->currentText();
     settings["bond_material"] = this->combobox_bond_material->currentText();
     settings["scene_background_color"] = this->background_color.name(QColor::HexRgb);
-    settings["light_color"] = this->light_color.name(QColor::HexRgb);
-    settings["relative_light_intensity"] = this->spinbox_light_intensity->value();
-    settings["light_area_size"] = this->spinbox_light_area_size->value();
+    settings["light_left_color"] = this->light_left_color.name(QColor::HexRgb);
+    settings["light_right_color"] = this->light_right_color.name(QColor::HexRgb);
+    settings["light_left_intensity"] = this->spinbox_light_left_intensity->value();
+    settings["light_right_intensity"] = this->spinbox_light_right_intensity->value();
+    settings["light_left_area_size"] = this->spinbox_light_left_area_size->value();
+    settings["light_right_area_size"] = this->spinbox_light_right_area_size->value();
     settings["custom_rules"] = this->build_custom_json();
 
     QJsonObject root;
@@ -1041,17 +1092,33 @@ void MainWindow::apply_render_settings_json(const QJsonObject& settings) {
         this->update_color_button_style(this->button_background_color, this->background_color);
     }
 
-    const QColor loadedLight(settings["light_color"].toString(this->light_color.name(QColor::HexRgb)));
-    if(loadedLight.isValid()) {
-        this->light_color = loadedLight;
-        this->button_light_color->setText(this->light_color.name(QColor::HexRgb).toUpper());
-        this->update_color_button_style(this->button_light_color, this->light_color);
+    const QColor loadedLeftLight(settings["light_left_color"].toString(settings["light_color"].toString(this->light_left_color.name(QColor::HexRgb))));
+    if(loadedLeftLight.isValid()) {
+        this->light_left_color = loadedLeftLight;
+        this->button_light_left_color->setText(this->light_left_color.name(QColor::HexRgb).toUpper());
+        this->update_color_button_style(this->button_light_left_color, this->light_left_color);
     }
-    const QJsonValue relIntensity = settings.contains("relative_light_intensity")
-        ? settings["relative_light_intensity"]
-        : settings["light_intensity"];
-    this->spinbox_light_intensity->setValue(relIntensity.toDouble(this->spinbox_light_intensity->value()));
-    this->spinbox_light_area_size->setValue(settings["light_area_size"].toDouble(this->spinbox_light_area_size->value()));
+    const QColor loadedRightLight(settings["light_right_color"].toString(settings["light_color"].toString(this->light_right_color.name(QColor::HexRgb))));
+    if(loadedRightLight.isValid()) {
+        this->light_right_color = loadedRightLight;
+        this->button_light_right_color->setText(this->light_right_color.name(QColor::HexRgb).toUpper());
+        this->update_color_button_style(this->button_light_right_color, this->light_right_color);
+    }
+
+    const QJsonValue leftIntensity = settings.contains("light_left_intensity")
+        ? settings["light_left_intensity"]
+        : settings.contains("relative_light_intensity")
+            ? settings["relative_light_intensity"]
+            : settings["light_intensity"];
+    const QJsonValue rightIntensity = settings.contains("light_right_intensity")
+        ? settings["light_right_intensity"]
+        : settings.contains("relative_light_intensity")
+            ? settings["relative_light_intensity"]
+            : settings["light_intensity"];
+    this->spinbox_light_left_intensity->setValue(leftIntensity.toDouble(this->spinbox_light_left_intensity->value()));
+    this->spinbox_light_right_intensity->setValue(rightIntensity.toDouble(this->spinbox_light_right_intensity->value()));
+    this->spinbox_light_left_area_size->setValue(settings["light_left_area_size"].toDouble(settings["light_area_size"].toDouble(this->spinbox_light_left_area_size->value())));
+    this->spinbox_light_right_area_size->setValue(settings["light_right_area_size"].toDouble(settings["light_area_size"].toDouble(this->spinbox_light_right_area_size->value())));
 
     if(settings["custom_rules"].isObject()) {
         this->render_atoms_widget->load_from_json(settings["custom_rules"].toObject());

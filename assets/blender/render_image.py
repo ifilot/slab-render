@@ -113,55 +113,52 @@ def parse_hex_color(color_str, fallback=(1.0, 1.0, 1.0)):
         return fallback
 
 
-def set_main_light_settings(camera_object, autoscale, light_color=None, relative_light_intensity=None, light_area_size=None):
-    light_name = 'SlabRenderAreaLight'
-
+def set_main_light_settings(camera_object, highest_z_point, left_light_settings, right_light_settings):
     # remove all light objects (including Blender default startup light)
     light_objects = [obj for obj in bpy.data.objects if obj.type == 'LIGHT']
     for obj in light_objects:
         bpy.data.objects.remove(obj, do_unlink=True)
 
-    light_data = bpy.data.lights.new(name=light_name, type='AREA')
-    light_data.shape = 'SQUARE'
-
-    if light_color is None:
-        light_color = (1.0, 1.0, 1.0)
-    if relative_light_intensity is None:
-        relative_light_intensity = 50.0
-    if light_area_size is None:
-        light_area_size = 25.0
-
-    light_data.color = (
-        float(light_color[0]),
-        float(light_color[1]),
-        float(light_color[2]),
-    )
-    light_data.size = max(0.01, float(light_area_size))
-    light_data.energy = float(relative_light_intensity) * (light_data.size ** 2)
-
-    light_object = bpy.data.objects.new(light_name, light_data)
-    bpy.context.scene.collection.objects.link(light_object)
-
-    cam_loc = Vector(camera_object.location)
     cam_quat = camera_object.matrix_world.to_quaternion()
-    cam_forward = cam_quat @ Vector((0.0, 0.0, -1.0))
-    cam_right = cam_quat @ Vector((1.0, 0.0, 0.0))
-    cam_up = cam_quat @ Vector((0.0, 1.0, 0.0))
 
-    base_dist = max(float(autoscale) * 0.8, 8.0)
-    light_position = cam_loc + cam_forward * base_dist + cam_right * (0.45 * base_dist) + cam_up * (0.20 * base_dist)
-    light_object.location = light_position
+    center = Vector((0.0, 0.0, 0.0))
+    default_anchor = Vector((0.0, 0.0, float(highest_z_point) + 20.0))
+    default_left = Vector((-20.0, 0.0, 0.0))
+    default_right = Vector((20.0, 0.0, 0.0))
 
-    look_vec = Vector((0.0, 0.0, 0.0)) - light_position
-    if look_vec.length > 1e-8:
-        light_object.rotation_euler = look_vec.to_track_quat('-Z', 'Y').to_euler()
+    anchor = cam_quat @ default_anchor
+    left_position = anchor + cam_quat @ default_left
+    right_position = anchor + cam_quat @ default_right
 
-    print("Created area light '%s'" % light_name)
-    print('Set light color to %s' % (light_color,))
-    print('Set relative light intensity to %s' % relative_light_intensity)
-    print('Set light area size to %s' % light_data.size)
-    print('Computed light energy to %s' % light_data.energy)
-    print('Set light location to %s' % (tuple(light_object.location),))
+    lights = [
+        ('SlabRenderAreaLightLeft', left_position, left_light_settings),
+        ('SlabRenderAreaLightRight', right_position, right_light_settings),
+    ]
+
+    for light_name, light_position, light_settings in lights:
+        light_data = bpy.data.lights.new(name=light_name, type='AREA')
+        light_data.shape = 'SQUARE'
+        light_data.color = (
+            float(light_settings['color'][0]),
+            float(light_settings['color'][1]),
+            float(light_settings['color'][2]),
+        )
+        light_data.size = max(0.01, float(light_settings['size']))
+        light_data.energy = max(0.0, float(light_settings['intensity']))
+
+        light_object = bpy.data.objects.new(light_name, light_data)
+        bpy.context.scene.collection.objects.link(light_object)
+        light_object.location = light_position
+
+        look_vec = center - light_position
+        if look_vec.length > 1e-8:
+            light_object.rotation_euler = look_vec.to_track_quat('-Z', 'Y').to_euler()
+
+        print("Created area light '%s'" % light_name)
+        print('Set light color to %s' % (light_settings['color'],))
+        print('Set light intensity to %s' % light_data.energy)
+        print('Set light area size to %s' % light_data.size)
+        print('Set light location to %s' % (tuple(light_object.location),))
 
 
 def set_film_transparent(enabled=True):
@@ -188,9 +185,17 @@ def main():
     print(data)
 
     scene_background_color = parse_hex_color(data.get('scene_background_color', '#CCCCCC'), (0.8, 0.8, 0.8))
-    light_color = parse_hex_color(data.get('light_color', '#FFFFFF'), (1.0, 1.0, 1.0))
-    relative_light_intensity = data.get('relative_light_intensity', data.get('light_intensity', 50.0))
-    light_area_size = data.get('light_area_size', 25.0)
+
+    left_light_color = parse_hex_color(data.get('light_left_color', data.get('light_color', '#FFFFFF')), (1.0, 1.0, 1.0))
+    right_light_color = parse_hex_color(data.get('light_right_color', data.get('light_color', '#FFFFFF')), (1.0, 1.0, 1.0))
+
+    base_intensity = data.get('relative_light_intensity', data.get('light_intensity', 10000.0))
+    left_light_intensity = float(data.get('light_left_intensity', base_intensity))
+    right_light_intensity = float(data.get('light_right_intensity', base_intensity))
+
+    base_size = data.get('light_area_size', None)
+    left_light_size = float(data['light_left_area_size']) if 'light_left_area_size' in data else float(base_size if base_size is not None else 50.0)
+    right_light_size = float(data['light_right_area_size']) if 'light_right_area_size' in data else float(base_size if base_size is not None else 25.0)
 
     set_material_subsurface('specular', 0.3)
     set_material_subsurface('soft', 0.3)
@@ -207,7 +212,7 @@ def main():
             print('Enable rendering of coordinate axes')
 
     # build molecule
-    matrix = build_molecule(binfile, data)
+    matrix, highest_z_point = build_molecule(binfile, data)
     autoscale = max(np.linalg.norm(matrix[:,0]), np.linalg.norm(matrix[:,1]))
 
     # show the unitcell dimensions using dashed lines
@@ -216,7 +221,9 @@ def main():
 
     # add a camera
     camera_object = build_camera(data, autoscale)
-    set_main_light_settings(camera_object, autoscale, light_color, relative_light_intensity, light_area_size)
+    set_main_light_settings(camera_object, highest_z_point,
+                            {'color': left_light_color, 'intensity': left_light_intensity, 'size': left_light_size},
+                            {'color': right_light_color, 'intensity': right_light_intensity, 'size': right_light_size})
 
     # run single image with just the geometry or save blender file
     if mode == "save_blend":
@@ -366,7 +373,9 @@ def build_molecule(xyzfile, data):
         build_atoms(atoms_expansion, lib, data)
         build_bonds(atoms + atoms_expansion, bonds_expansion, lib, data)
 
-    return matrix
+    highest_z_point = max([at[3] for at in atoms] + ([at[3] for at in atoms_expansion] if data['expansion'] == True else [float('-inf')]))
+
+    return matrix, highest_z_point
 
 def show_unitcell(matrix, data):
     """
