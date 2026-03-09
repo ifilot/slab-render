@@ -562,8 +562,10 @@ void AnaglyphWidget::draw_axes() {
     projection_ortho.ortho(-sz, sz, -sz * ratio, sz * ratio, 0.1f, 1000.0f);
 
     this->view.setToIdentity();
-    this->view.lookAt(QVector3D(0.0, 0.0, 10.0), QVector3D(0.0, 0.0, 0.0), QVector3D(0.0, 1.0, 0.0));
+    const QVector3D axes_camera_position(0.0f, 0.0f, 10.0f);
+    this->view.lookAt(axes_camera_position, QVector3D(0.0, 0.0, 0.0), QVector3D(0.0, 1.0, 0.0));
     axes_shader->set_uniform("view", this->view);
+    axes_shader->set_uniform("light_pos", axes_camera_position);
     QMatrix4x4 axis_rotation;
     this->model.setToIdentity();
 

@@ -87,6 +87,7 @@ void ShaderProgram::add_uniforms() {
         this->uniforms.emplace("mvp", this->m_program->uniformLocation("mvp"));
         this->uniforms.emplace("model", this->m_program->uniformLocation("model"));
         this->uniforms.emplace("view", this->m_program->uniformLocation("view"));
+        this->uniforms.emplace("light_pos", this->m_program->uniformLocation("light_pos"));
         this->uniforms.emplace("color", this->m_program->uniformLocation("color"));
     }
 

@@ -15,7 +15,51 @@ from os.path import dirname
 import json
 import struct
 import bmesh
-import json
+
+def set_material_subsurface(material_name, value):
+    material = bpy.data.materials.get(material_name)
+    if material is None:
+        print("Material '%s' not found, cannot set subsurface" % material_name)
+        return
+
+    if not material.use_nodes or material.node_tree is None:
+        print("Material '%s' does not use nodes, cannot set subsurface" % material_name)
+        return
+
+    principled = material.node_tree.nodes.get('Principled BSDF')
+    if principled is None:
+        print("Material '%s' has no Principled BSDF node" % material_name)
+        return
+
+    subsurface_inputs = ['Subsurface', 'Subsurface Weight']
+    for input_name in subsurface_inputs:
+        if input_name in principled.inputs:
+            principled.inputs[input_name].default_value = value
+            print("Set %s for material '%s' to %0.2f" % (input_name, material_name, value))
+            return
+
+    print("Material '%s' has no Subsurface/Subsurface Weight input" % material_name)
+
+
+def set_scene_background_black():
+    world = bpy.context.scene.world
+    if world is None:
+        world = bpy.data.worlds.new('World')
+        bpy.context.scene.world = world
+
+    world.use_nodes = True
+    background = world.node_tree.nodes.get('Background')
+    if background is None:
+        print("No Background node found in world shader")
+        return
+
+    background.inputs['Color'].default_value = (0.3, 0.3, 0.3, 1.0)
+    print('Set scene background color to dark gray')
+
+
+def set_film_transparent(enabled=True):
+    bpy.context.scene.render.film_transparent = enabled
+    print('Set Film > Transparent to %s' % enabled)
 
 def main():
     # read input and output file
@@ -34,6 +78,11 @@ def main():
         data = json.load(f)
     print('Render settings:')
     print(data)
+
+    set_material_subsurface('specular', 0.3)
+    set_material_subsurface('soft', 0.3)
+    set_scene_background_black()
+    set_film_transparent(True)
 
     if 'hide_axes' in data.keys():
         if data['hide_axes'] == True:
