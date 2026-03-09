@@ -19,7 +19,8 @@ class RuleEditDialog : public QDialog {
 public:
     enum class Mode {
         Color,
-        Radius
+        Radius,
+        BondDistance
     };
 
     explicit RuleEditDialog(
@@ -29,55 +30,38 @@ public:
         int to,
         const QColor& color,
         double radius,
+        const QString& element_b = QString(),
+        double bond_distance = 2.0,
         QWidget* parent = nullptr
     );
 
-    /**
-     * @brief element.
-     */
     QString element() const;
-    /**
-     * @brief from.
-     */
+    QString element_b() const;
     int from() const;
-    /**
-     * @brief to.
-     */
     int to() const;
-    /**
-     * @brief color.
-     */
     QColor color() const;
-    /**
-     * @brief radius.
-     */
     double radius() const;
+    double bond_distance() const;
 
 private slots:
-    /**
-     * @brief slot_select_element.
-     */
     void slot_select_element();
-    /**
-     * @brief slot_select_color.
-     */
     void slot_select_color();
 
 private:
-    /**
-     * @brief update_color_button.
-     */
     void update_color_button();
 
     Mode mode_;
 
     QString element_;
+    QString element_b_;
     QColor color_;
 
     QPushButton* btn_element = nullptr;
+    QPushButton* btn_element_b = nullptr;
     QPushButton* btn_color   = nullptr;
 
     QSpinBox* spin_from = nullptr;
     QSpinBox* spin_to   = nullptr;
     QDoubleSpinBox* spin_radius = nullptr;
+    QDoubleSpinBox* spin_bond_distance = nullptr;
 };

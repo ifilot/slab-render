@@ -13,7 +13,6 @@
 #include <QLabel>
 #include <QSpinBox>
 #include <QDoubleSpinBox>
-#include <QColorDialog>
 #include <QHBoxLayout>
 
 RuleEditDialog::RuleEditDialog(
@@ -23,11 +22,14 @@ RuleEditDialog::RuleEditDialog(
     int to,
     const QColor& color,
     double radius,
+    const QString& element_b,
+    double bond_distance,
     QWidget* parent
 )
     : QDialog(parent),
       mode_(mode),
       element_(element),
+      element_b_(element_b),
       color_(color) {
 
     setWindowTitle(tr("Edit atom rule"));
@@ -40,8 +42,7 @@ RuleEditDialog::RuleEditDialog(
 
     int row = 0;
 
-    // --- Element selector ---
-    grid->addWidget(new QLabel(tr("Element")), row, 0);
+    grid->addWidget(new QLabel(mode_ == Mode::BondDistance ? tr("Element A") : tr("Element")), row, 0);
 
     btn_element = new QPushButton(element_);
     btn_element->setToolTip(tr("Select atom type"));
@@ -51,49 +52,66 @@ RuleEditDialog::RuleEditDialog(
             this, &RuleEditDialog::slot_select_element);
     row++;
 
-    // --- Atom range ---
-    grid->addWidget(new QLabel(tr("From atom")), row, 0);
-    spin_from = new QSpinBox();
-    spin_from->setRange(0, 9999);
-    spin_from->setValue(from);
-    spin_from->setToolTip(tr("0 means all atoms"));
-    grid->addWidget(spin_from, row, 1);
-    row++;
+    if(mode_ == Mode::BondDistance) {
+        grid->addWidget(new QLabel(tr("Element B")), row, 0);
+        btn_element_b = new QPushButton(element_b_);
+        btn_element_b->setToolTip(tr("Select second atom type"));
+        grid->addWidget(btn_element_b, row, 1);
 
-    grid->addWidget(new QLabel(tr("To atom")), row, 0);
-    spin_to = new QSpinBox();
-    spin_to->setRange(0, 9999);
-    spin_to->setValue(to);
-    spin_to->setToolTip(tr("0 means all atoms"));
-    grid->addWidget(spin_to, row, 1);
-    row++;
+        connect(btn_element_b, &QPushButton::clicked,
+                this, &RuleEditDialog::slot_select_element);
+        row++;
 
-    // --- Color OR Radius ---
-    if (mode_ == Mode::Color) {
-        grid->addWidget(new QLabel(tr("Color")), row, 0);
-
-        btn_color = new QPushButton();
-        btn_color->setFixedHeight(28);
-        update_color_button();
-
-        grid->addWidget(btn_color, row, 1);
-
-        connect(btn_color, &QPushButton::clicked,
-                this, &RuleEditDialog::slot_select_color);
-
+        grid->addWidget(new QLabel(tr("Max bond distance (Å)")), row, 0);
+        spin_bond_distance = new QDoubleSpinBox();
+        spin_bond_distance->setRange(0.1, 10.0);
+        spin_bond_distance->setDecimals(2);
+        spin_bond_distance->setSingleStep(0.05);
+        spin_bond_distance->setValue(bond_distance);
+        grid->addWidget(spin_bond_distance, row, 1);
+        row++;
     } else {
-        grid->addWidget(new QLabel(tr("Radius (Å)")), row, 0);
+        grid->addWidget(new QLabel(tr("From atom")), row, 0);
+        spin_from = new QSpinBox();
+        spin_from->setRange(0, 9999);
+        spin_from->setValue(from);
+        spin_from->setToolTip(tr("0 means all atoms"));
+        grid->addWidget(spin_from, row, 1);
+        row++;
 
-        spin_radius = new QDoubleSpinBox();
-        spin_radius->setRange(0.01, 10.0);
-        spin_radius->setDecimals(2);
-        spin_radius->setSingleStep(0.05);
-        spin_radius->setValue(radius);
+        grid->addWidget(new QLabel(tr("To atom")), row, 0);
+        spin_to = new QSpinBox();
+        spin_to->setRange(0, 9999);
+        spin_to->setValue(to);
+        spin_to->setToolTip(tr("0 means all atoms"));
+        grid->addWidget(spin_to, row, 1);
+        row++;
 
-        grid->addWidget(spin_radius, row, 1);
+        if (mode_ == Mode::Color) {
+            grid->addWidget(new QLabel(tr("Color")), row, 0);
+
+            btn_color = new QPushButton();
+            btn_color->setFixedHeight(28);
+            update_color_button();
+
+            grid->addWidget(btn_color, row, 1);
+
+            connect(btn_color, &QPushButton::clicked,
+                    this, &RuleEditDialog::slot_select_color);
+
+        } else {
+            grid->addWidget(new QLabel(tr("Radius (Å)")), row, 0);
+
+            spin_radius = new QDoubleSpinBox();
+            spin_radius->setRange(0.01, 10.0);
+            spin_radius->setDecimals(2);
+            spin_radius->setSingleStep(0.05);
+            spin_radius->setValue(radius);
+
+            grid->addWidget(spin_radius, row, 1);
+        }
     }
 
-    // --- Buttons ---
     auto* buttonLayout = new QHBoxLayout();
     mainLayout->addLayout(buttonLayout);
     buttonLayout->addStretch();
@@ -112,20 +130,19 @@ RuleEditDialog::RuleEditDialog(
             this, &QDialog::reject);
 }
 
-/**
- * @brief slot_select_element.
- */
 void RuleEditDialog::slot_select_element() {
     PeriodicTableDialog dlg(this);
     if (dlg.exec() == QDialog::Accepted) {
-        element_ = dlg.selectedElement();
-        btn_element->setText(element_);
+        if(sender() == btn_element_b) {
+            element_b_ = dlg.selectedElement();
+            btn_element_b->setText(element_b_);
+        } else {
+            element_ = dlg.selectedElement();
+            btn_element->setText(element_);
+        }
     }
 }
 
-/**
- * @brief slot_select_color.
- */
 void RuleEditDialog::slot_select_color() {
     ColorPickerDialog dlg(color_, this);
     if (dlg.exec() == QDialog::Accepted) {
@@ -134,9 +151,6 @@ void RuleEditDialog::slot_select_color() {
     }
 }
 
-/**
- * @brief update_color_button.
- */
 void RuleEditDialog::update_color_button() {
     btn_color->setText(color_.name());
     btn_color->setStyleSheet(
@@ -151,39 +165,30 @@ void RuleEditDialog::update_color_button() {
     );
 }
 
-// --- Getters ---
-
-/**
- * @brief element.
- */
 QString RuleEditDialog::element() const {
     return element_;
 }
 
-/**
- * @brief from.
- */
+QString RuleEditDialog::element_b() const {
+    return element_b_;
+}
+
 int RuleEditDialog::from() const {
-    return spin_from->value();
+    return spin_from ? spin_from->value() : 0;
 }
 
-/**
- * @brief to.
- */
 int RuleEditDialog::to() const {
-    return spin_to->value();
+    return spin_to ? spin_to->value() : 0;
 }
 
-/**
- * @brief color.
- */
 QColor RuleEditDialog::color() const {
     return color_;
 }
 
-/**
- * @brief radius.
- */
 double RuleEditDialog::radius() const {
     return spin_radius ? spin_radius->value() : 0.0;
+}
+
+double RuleEditDialog::bond_distance() const {
+    return spin_bond_distance ? spin_bond_distance->value() : 0.0;
 }

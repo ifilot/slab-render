@@ -77,8 +77,6 @@ private:
     QCheckBox* checkbox_axes;
     QSpinBox* spinbox_resolution_x;
     QSpinBox* spinbox_resolution_y;
-    QSpinBox* spinbox_tile_x;
-    QSpinBox* spinbox_tile_y;
     QSpinBox* spinbox_samples;
     QSpinBox* spinbox_nsubdiv;
     QComboBox* combobox_atom_material;
@@ -240,9 +238,14 @@ private slots:
      */
     void slot_about();
 
+    void slot_save_render_settings();
+    void slot_load_render_settings();
+
 private:
     /**
      * @brief build_custom_json.
      */
     QJsonObject build_custom_json() const;
+    QJsonObject collect_render_settings_json() const;
+    void apply_render_settings_json(const QJsonObject& settings);
 };

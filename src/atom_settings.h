@@ -47,6 +47,12 @@ private:
         float radius = 1.0f;
     };
 
+    struct BondDistanceRule {
+        std::string element_a;
+        std::string element_b;
+        float max_distance = 2.0f;
+    };
+
 private:
     std::string settings_data;
     boost::property_tree::ptree root;
@@ -56,6 +62,7 @@ private:
     std::vector<QVector3D> colors;
     std::vector<IndexedColorRule> atom_color_rules;
     std::vector<IndexedRadiusRule> atom_radius_rules;
+    std::vector<BondDistanceRule> bond_distance_rules;
 
 public:
     /**

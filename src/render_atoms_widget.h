@@ -8,6 +8,7 @@
 #include <QWidget>
 #include <QListWidget>
 #include <QColor>
+#include <QJsonObject>
 #include <vector>
 
 class RuleItemWidget;
@@ -27,6 +28,12 @@ struct AtomRadiusRule {
     double radius = 1.0;
 };
 
+struct BondDistanceRule {
+    QString element_a;
+    QString element_b;
+    double max_distance = 2.0;
+};
+
 class RenderAtomsWidget : public QWidget {
     Q_OBJECT
 
@@ -40,6 +47,11 @@ public:
      * @brief generate_json.
      */
     QString generate_json() const;
+
+    /**
+     * @brief load_from_json.
+     */
+    void load_from_json(const QJsonObject& root);
 
 signals:
     /**
@@ -57,6 +69,10 @@ private slots:
      */
     void slot_add_radius_rule();
     /**
+     * @brief slot_add_bond_rule.
+     */
+    void slot_add_bond_rule();
+    /**
      * @brief edit_rule.
      */
     void edit_rule(QListWidgetItem* item);
@@ -64,7 +80,8 @@ private slots:
 private:
     enum class RuleType {
         Color,
-        Radius
+        Radius,
+        BondDistance
     };
 
     /**
@@ -91,9 +108,14 @@ private:
      * @brief format_radius_rule.
      */
     QString format_radius_rule(const AtomRadiusRule& r) const;
+    /**
+     * @brief format_bond_rule.
+     */
+    QString format_bond_rule(const BondDistanceRule& r) const;
 
     QListWidget* rule_list = nullptr;
 
     std::vector<AtomColorRule> color_rules;
     std::vector<AtomRadiusRule> radius_rules;
+    std::vector<BondDistanceRule> bond_rules;
 };

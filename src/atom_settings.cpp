@@ -30,6 +30,7 @@ void AtomSettings::reset() {
     this->load();
     this->atom_color_rules.clear();
     this->atom_radius_rules.clear();
+    this->bond_distance_rules.clear();
 
     // set all bonds by default to 3.0
     this->bond_distances.resize(121);
@@ -84,6 +85,7 @@ void AtomSettings::overwrite(const std::string& data) {
     // update custom rule sets only from provided JSON object
     this->atom_color_rules.clear();
     this->atom_radius_rules.clear();
+    this->bond_distance_rules.clear();
 
     if(data.empty()) {
         return;
@@ -119,6 +121,12 @@ void AtomSettings::overwrite(const std::string& data) {
 
                 this->bond_distances[atom_id0][atom_id1] = dist;
                 this->bond_distances[atom_id1][atom_id0] = dist;
+
+                BondDistanceRule rule;
+                rule.element_a = atom0;
+                rule.element_b = atom1;
+                rule.max_distance = dist;
+                this->bond_distance_rules.push_back(rule);
 
                 qDebug() << "Overwring bond distances " << atom0.c_str() << "-"
                          << atom1.c_str() << ": " << pieces[2].c_str() << " angstrom.";
@@ -315,6 +323,7 @@ std::optional<AtomSettings::IndexedRadiusRule> AtomSettings::find_atom_radius_ru
 
     return match;
 }
+
 
 /**
  * @brief hexcode_to_vector3d.

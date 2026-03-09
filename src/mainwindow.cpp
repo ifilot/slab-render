@@ -114,6 +114,16 @@ void MainWindow::build_dropdown_menu() {
     menuFile->addAction(action_open);
     connect(action_open, &QAction::triggered, this, &MainWindow::slot_select_folder);
 
+    QAction *action_load_render_settings = new QAction(menuFile);
+    action_load_render_settings->setText(tr("Load render settings..."));
+    menuFile->addAction(action_load_render_settings);
+    connect(action_load_render_settings, &QAction::triggered, this, &MainWindow::slot_load_render_settings);
+
+    QAction *action_save_render_settings = new QAction(menuFile);
+    action_save_render_settings->setText(tr("Save render settings..."));
+    menuFile->addAction(action_save_render_settings);
+    connect(action_save_render_settings, &QAction::triggered, this, &MainWindow::slot_save_render_settings);
+
     // quit
     QAction *action_quit = new QAction(menuFile);
     action_quit->setText(tr("Quit"));
@@ -271,24 +281,6 @@ void MainWindow::build_blender_settings_panel(QVBoxLayout* layout) {
     this->spinbox_resolution_y->setMaximum(2048);
     this->spinbox_resolution_y->setValue(512);
 
-    // tile size in x direction
-    rownr++;
-    layout_blender_settings->addWidget(new QLabel("Tile x"), rownr, 0);
-    this->spinbox_tile_x = new QSpinBox();
-    layout_blender_settings->addWidget(this->spinbox_tile_x, rownr, 1);
-    this->spinbox_tile_x->setMinimum(128);
-    this->spinbox_tile_x->setMaximum(2048);
-    this->spinbox_tile_x->setValue(256);
-
-    // tile size in y direction
-    rownr++;
-    layout_blender_settings->addWidget(new QLabel("Tile y"), rownr, 0);
-    this->spinbox_tile_y = new QSpinBox();
-    layout_blender_settings->addWidget(this->spinbox_tile_y, rownr, 1);
-    this->spinbox_tile_y->setMinimum(128);
-    this->spinbox_tile_y->setMaximum(2048);
-    this->spinbox_tile_y->setValue(256);
-
     // number of samples
     rownr++;
     layout_blender_settings->addWidget(new QLabel("Samples"), rownr, 0);
@@ -443,8 +435,8 @@ void MainWindow::slot_parse_files() {
     parameters.insert("hide_axes", QVariant(this->checkbox_axes->isChecked()));
     parameters.insert("resolution_x", QVariant(this->spinbox_resolution_x->value()));
     parameters.insert("resolution_y", QVariant(this->spinbox_resolution_y->value()));
-    parameters.insert("tile_x", QVariant(this->spinbox_tile_x->value()));
-    parameters.insert("tile_y", QVariant(this->spinbox_tile_y->value()));
+    parameters.insert("tile_x", QVariant(this->spinbox_resolution_x->value()));
+    parameters.insert("tile_y", QVariant(this->spinbox_resolution_y->value()));
     parameters.insert("samples", QVariant(this->spinbox_samples->value()));
     parameters.insert("nsubdiv", QVariant(this->spinbox_nsubdiv->value()));
     parameters.insert("atmat", QVariant(this->combobox_atom_material->currentText()));
@@ -499,8 +491,8 @@ void MainWindow::slot_parse_single_job() {
     parameters.insert("hide_axes", QVariant(this->checkbox_axes->isChecked()));
     parameters.insert("resolution_x", QVariant(this->spinbox_resolution_x->value()));
     parameters.insert("resolution_y", QVariant(this->spinbox_resolution_y->value()));
-    parameters.insert("tile_x", QVariant(this->spinbox_tile_x->value()));
-    parameters.insert("tile_y", QVariant(this->spinbox_tile_y->value()));
+    parameters.insert("tile_x", QVariant(this->spinbox_resolution_x->value()));
+    parameters.insert("tile_y", QVariant(this->spinbox_resolution_y->value()));
     parameters.insert("samples", QVariant(this->spinbox_samples->value()));
     parameters.insert("nsubdiv", QVariant(this->spinbox_nsubdiv->value()));
     parameters.insert("atmat", QVariant(this->combobox_atom_material->currentText()));
@@ -815,6 +807,129 @@ QJsonObject MainWindow::build_custom_json() const {
     }
 
     return root;
+}
+
+
+void MainWindow::slot_save_render_settings() {
+    const QString filename = QFileDialog::getSaveFileName(this, tr("Save render settings"), QString(), tr("JSON (*.json)"));
+    if(filename.isEmpty()) {
+        return;
+    }
+
+    const QJsonObject root = this->collect_render_settings_json();
+    QFile file(filename);
+    if(!file.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text)) {
+        QMessageBox::critical(this, tr("Write failed"), tr("Could not write file:\n%1").arg(filename));
+        return;
+    }
+
+    file.write(QJsonDocument(root).toJson(QJsonDocument::Indented));
+    file.close();
+}
+
+void MainWindow::slot_load_render_settings() {
+    const QString filename = QFileDialog::getOpenFileName(this, tr("Load render settings"), QString(), tr("JSON (*.json)"));
+    if(filename.isEmpty()) {
+        return;
+    }
+
+    QFile file(filename);
+    if(!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        QMessageBox::critical(this, tr("Read failed"), tr("Could not read file:\n%1").arg(filename));
+        return;
+    }
+
+    const QByteArray raw = file.readAll();
+    file.close();
+
+    QJsonParseError err;
+    const QJsonDocument doc = QJsonDocument::fromJson(raw, &err);
+    if(err.error != QJsonParseError::NoError || !doc.isObject()) {
+        QMessageBox::critical(this, tr("Invalid file"), tr("Invalid JSON file:\n%1").arg(err.errorString()));
+        return;
+    }
+
+    const QJsonObject root = doc.object();
+    if(root["program"].toString() != PROGRAM_NAME || root["version"].toString().isEmpty() || !root["render_settings"].isObject()) {
+        QMessageBox::critical(this, tr("Invalid file"), tr("This file is not a valid %1 render settings file.").arg(PROGRAM_NAME));
+        return;
+    }
+
+    this->apply_render_settings_json(root["render_settings"].toObject());
+}
+
+QJsonObject MainWindow::collect_render_settings_json() const {
+    QJsonObject settings;
+    settings["blender_executable"] = this->combobox_blender_executable->currentText();
+    settings["ortho_scale"] = this->combobox_ortho_scale->currentText();
+    settings["ortho_custom_scale"] = this->spinbox_custom_ortho_scale->value();
+    settings["camera_direction"] = this->combobox_camera_direction->currentText();
+    settings["custom_euler_x"] = this->spinbox_custom_euler_x->value();
+    settings["custom_euler_y"] = this->spinbox_custom_euler_y->value();
+    settings["custom_euler_z"] = this->spinbox_custom_euler_z->value();
+    settings["show_unitcell"] = this->checkbox_unitcell->isChecked();
+    settings["expansion"] = this->checkbox_expansion->isChecked();
+    settings["hide_axes"] = this->checkbox_axes->isChecked();
+    settings["resolution_x"] = this->spinbox_resolution_x->value();
+    settings["resolution_y"] = this->spinbox_resolution_y->value();
+    settings["samples"] = this->spinbox_samples->value();
+    settings["nsubdiv"] = this->spinbox_nsubdiv->value();
+    settings["atom_material"] = this->combobox_atom_material->currentText();
+    settings["bond_material"] = this->combobox_bond_material->currentText();
+    settings["custom_rules"] = this->build_custom_json();
+
+    QJsonObject root;
+    root["program"] = PROGRAM_NAME;
+    root["version"] = PROGRAM_VERSION;
+    root["render_settings"] = settings;
+    return root;
+}
+
+void MainWindow::apply_render_settings_json(const QJsonObject& settings) {
+    const QString blenderExe = settings["blender_executable"].toString();
+    if(!blenderExe.isEmpty()) {
+        const int index = this->combobox_blender_executable->findText(blenderExe);
+        if(index >= 0) {
+            this->combobox_blender_executable->setCurrentIndex(index);
+        }
+    }
+
+    const int orthoIndex = this->combobox_ortho_scale->findText(settings["ortho_scale"].toString());
+    if(orthoIndex >= 0) this->combobox_ortho_scale->setCurrentIndex(orthoIndex);
+    this->spinbox_custom_ortho_scale->setValue(settings["ortho_custom_scale"].toDouble(this->spinbox_custom_ortho_scale->value()));
+
+    const int cameraIndex = this->combobox_camera_direction->findText(settings["camera_direction"].toString());
+    if(cameraIndex >= 0) this->combobox_camera_direction->setCurrentIndex(cameraIndex);
+
+    this->flag_block_custom_euler_sync = true;
+    this->spinbox_custom_euler_x->setValue(settings["custom_euler_x"].toDouble(this->spinbox_custom_euler_x->value()));
+    this->spinbox_custom_euler_y->setValue(settings["custom_euler_y"].toDouble(this->spinbox_custom_euler_y->value()));
+    this->spinbox_custom_euler_z->setValue(settings["custom_euler_z"].toDouble(this->spinbox_custom_euler_z->value()));
+    this->flag_block_custom_euler_sync = false;
+
+    this->checkbox_unitcell->setChecked(settings["show_unitcell"].toBool(this->checkbox_unitcell->isChecked()));
+    this->checkbox_expansion->setChecked(settings["expansion"].toBool(this->checkbox_expansion->isChecked()));
+    this->checkbox_axes->setChecked(settings["hide_axes"].toBool(this->checkbox_axes->isChecked()));
+
+    this->spinbox_resolution_x->setValue(settings["resolution_x"].toInt(this->spinbox_resolution_x->value()));
+    this->spinbox_resolution_y->setValue(settings["resolution_y"].toInt(this->spinbox_resolution_y->value()));
+    this->spinbox_samples->setValue(settings["samples"].toInt(this->spinbox_samples->value()));
+    this->spinbox_nsubdiv->setValue(settings["nsubdiv"].toInt(this->spinbox_nsubdiv->value()));
+
+    const int atomMatIndex = this->combobox_atom_material->findText(settings["atom_material"].toString());
+    if(atomMatIndex >= 0) this->combobox_atom_material->setCurrentIndex(atomMatIndex);
+    const int bondMatIndex = this->combobox_bond_material->findText(settings["bond_material"].toString());
+    if(bondMatIndex >= 0) this->combobox_bond_material->setCurrentIndex(bondMatIndex);
+
+    if(settings["custom_rules"].isObject()) {
+        this->render_atoms_widget->load_from_json(settings["custom_rules"].toObject());
+    }
+
+    if(this->combobox_camera_direction->currentText() == "custom") {
+        this->slot_set_custom_euler();
+    }
+
+    this->slot_sync_atom_render_rules();
 }
 
 /**
