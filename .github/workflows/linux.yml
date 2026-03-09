@@ -33,7 +33,8 @@ jobs:
             libboost-all-dev \
             libeigen3-dev \
             libfreetype-dev \
-            libglm-dev
+            libglm-dev \
+            libyaml-cpp-dev
 
       - name: Configure
         run: |

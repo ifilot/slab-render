@@ -8,6 +8,7 @@
 #include <QJsonDocument>
 #include <QJsonParseError>
 #include <QFile>
+#include <QFileInfo>
 
 /**
  * @brief ThreadRenderImage.
@@ -68,7 +69,13 @@ void ThreadRenderImage::run() {
                 // copy image back
                 QFile imagefile(process->workingDirectory() + "/image.png");
                 if(imagefile.open(QIODevice::ReadOnly)) {
-                    QString storepath = QFileInfo(file).absoluteDir().path() + "/image.png";
+                    QFileInfo source_info(file);
+                    QString output_name = "image.png";
+                    if(source_info.suffix().compare("yaml", Qt::CaseInsensitive) == 0 ||
+                       source_info.suffix().compare("yml", Qt::CaseInsensitive) == 0) {
+                        output_name = source_info.completeBaseName() + ".png";
+                    }
+                    QString storepath = source_info.absoluteDir().filePath(output_name);
 
                     // remove existing file if it exists
                     if(QFile::exists(storepath)) {

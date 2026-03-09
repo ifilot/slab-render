@@ -109,6 +109,7 @@ private:
         "ADF .log files (logfile)",
         "Gaussian .log files (*.log, *.LOG)",
         "MKMCXX3 .mks files (*.mks)",
+        "PyMKMKit YAML files (*.yaml, *.yml)",
     };
 
 public:
@@ -139,6 +140,11 @@ private:
      * @brief Find files with a specific file name
      */
     QStringList find_files(const QString& path, const QStringList& filenames);
+
+    /**
+     * @brief Find YAML files that match the PyMKMKit schema
+     */
+    QStringList find_pymkmkit_yaml_files(const QString& path);
 
     /**
      * @brief fetch_tooltip_text.

@@ -378,6 +378,23 @@ QStringList MainWindow::find_files(const QString& path, const QStringList& filen
 }
 
 /**
+ * @brief Find YAML files that match the PyMKMKit schema
+ */
+QStringList MainWindow::find_pymkmkit_yaml_files(const QString& path) {
+    QStringList candidates = find_files(path, {"*.yaml", "*.yml", "*.YAML", "*.YML"});
+    QStringList valid_files;
+
+    StructureLoader sl;
+    for (const auto& file : candidates) {
+        if (sl.is_pymkmkit_yaml(file.toStdString())) {
+            valid_files << file;
+        }
+    }
+
+    return valid_files;
+}
+
+/**
  * @brief fetch_tooltip_text.
  */
 QString MainWindow::fetch_tooltip_text(const QString& filename) {
@@ -547,6 +564,8 @@ void MainWindow::slot_select_folder() {
         files = find_files(path, {"*.LOG", "*.log"});
     } else if (type == GEOMETRY_FILETYPES[3]) {       // MKS files
         files = find_files(path, {"*.mks", "*.MKS"});
+    } else if (type == GEOMETRY_FILETYPES[4]) {       // PyMKMKit YAML files
+        files = find_pymkmkit_yaml_files(path);
     } else {
         throw std::runtime_error("Invalid selection. Terminating program.");
     }

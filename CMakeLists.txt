@@ -33,6 +33,7 @@ find_package(Boost REQUIRED COMPONENTS
 
 find_package(Eigen3 REQUIRED)
 find_package(glm REQUIRED)
+find_package(yaml-cpp REQUIRED)
 
 # --------------------
 # Sources
@@ -94,6 +95,7 @@ target_link_libraries(slabrender PRIVATE
     Boost::iostreams
     Eigen3::Eigen
     glm::glm
+    yaml-cpp::yaml-cpp
 )
 
 # --------------------
