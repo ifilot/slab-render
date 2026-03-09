@@ -26,6 +26,7 @@ private:
     QLabel* label_job_path;
     QPushButton* button_open_path;
     QPushButton* button_save_image;
+    QPushButton* button_render_single_file;
 
     QPlainTextEdit* text_job_info;
     QLabel* label_image;
@@ -33,6 +34,9 @@ private:
 
     ThreadRenderImage* process_job_queue = nullptr;
     AnaglyphWidget* anaglyph_widget = nullptr;
+    int current_job_id = -1;
+
+    QString get_expected_image_path(const QString& filepath) const;
 
 public:
     /**
@@ -60,6 +64,7 @@ public:
     void rebuild_structures();
 
 signals:
+    void signal_render_single_job_requested(int job_id);
 
 public slots:
     /**
@@ -82,4 +87,9 @@ private slots:
      * @brief slot_save_image.
      */
     void slot_save_image();
+
+    /**
+     * @brief slot_render_single_file.
+     */
+    void slot_render_single_file();
 };

@@ -31,10 +31,15 @@ JobInfoWidget::JobInfoWidget(QWidget *parent) : QTabWidget(parent) {
     layout_button_container->addWidget(this->button_save_image);
     this->button_save_image->setEnabled(false);
     connect(this->button_save_image, SIGNAL(released()), this, SLOT(slot_save_image()));
+    this->button_render_single_file = new QPushButton("Render this file");
+    layout_button_container->addWidget(this->button_render_single_file);
+    this->button_render_single_file->setEnabled(false);
+    connect(this->button_render_single_file, SIGNAL(released()), this, SLOT(slot_render_single_file()));
 
     this->label_image = new QLabel();
     this->label_image->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
     this->label_image->setAlignment (Qt::AlignCenter);
+    this->label_image->setWordWrap(true);
     layout->addWidget(this->label_image);
 
     layout->addWidget(new QLabel("Rendering log"));
@@ -72,14 +77,16 @@ void JobInfoWidget::rebuild_structures() {
  */
 void JobInfoWidget::slot_update_job_info(int job_id) {
     qDebug() << "Updating job info for job id: " << job_id;
+    this->current_job_id = job_id;
     if(this->process_job_queue != nullptr) {
         this->text_job_info->clear();
         this->text_job_info->appendPlainText(this->process_job_queue->get_output(job_id).join('\n'));
         QString contcarpath = this->process_job_queue->get_file(job_id);
         this->label_job_path->setText(contcarpath);
         this->button_open_path->setEnabled(true);
+        this->button_render_single_file->setEnabled(true);
 
-        QString imagepath = QFileInfo(contcarpath).absoluteDir().path() + "/image.png";
+        QString imagepath = this->get_expected_image_path(contcarpath);
         QFile imagefile(imagepath);
         if(imagefile.exists()) {
             QPixmap pixmap(imagepath);
@@ -87,13 +94,27 @@ void JobInfoWidget::slot_update_job_info(int job_id) {
             this->label_image->setStyleSheet("border: 1px solid black;");
             this->button_save_image->setEnabled(true);
         } else {
-            this->label_image->clear();
+            this->label_image->setPixmap(QPixmap());
+            this->label_image->setText("No rendered image was found for this job. Please start rendering to generate it.");
             this->label_image->setStyleSheet("");
             this->button_save_image->setEnabled(false);
         }
     } else {
         this->button_open_path->setEnabled(false);
+        this->button_render_single_file->setEnabled(false);
     }
+}
+
+QString JobInfoWidget::get_expected_image_path(const QString& filepath) const {
+    QFileInfo file_info(filepath);
+    const QString suffix = file_info.suffix();
+    if(suffix.compare("yaml", Qt::CaseInsensitive) == 0 ||
+       suffix.compare("yml", Qt::CaseInsensitive) == 0 ||
+       suffix.compare("mks", Qt::CaseInsensitive) == 0) {
+        return file_info.absoluteDir().filePath(file_info.completeBaseName() + ".png");
+    }
+
+    return file_info.absoluteDir().filePath("image.png");
 }
 
 /**
@@ -120,7 +141,7 @@ void JobInfoWidget::slot_show_path_in_explorer_window() {
  * @brief slot_save_image.
  */
 void JobInfoWidget::slot_save_image() {
-    QString imagepath = QFileInfo(this->label_job_path->text()).absoluteDir().path() + "/image.png";
+    QString imagepath = this->get_expected_image_path(this->label_job_path->text());
     QFile imagefile(imagepath);
     if(imagefile.exists()) {
         QString filename = QFileDialog::getSaveFileName(this, tr("Save File"),
@@ -129,5 +150,14 @@ void JobInfoWidget::slot_save_image() {
         if(!filename.isEmpty()) {
             imagefile.copy(filename);
         }
+    }
+}
+
+/**
+ * @brief slot_render_single_file.
+ */
+void JobInfoWidget::slot_render_single_file() {
+    if(this->current_job_id >= 0) {
+        emit signal_render_single_job_requested(this->current_job_id);
     }
 }

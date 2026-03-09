@@ -168,6 +168,11 @@ private slots:
     void slot_parse_single_job();
 
     /**
+     * @brief slot_parse_selected_job.
+     */
+    void slot_parse_selected_job(int jobid);
+
+    /**
      * @brief slot_job_start.
      */
     void slot_job_start(int jobid);

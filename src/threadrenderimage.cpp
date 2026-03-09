@@ -72,7 +72,8 @@ void ThreadRenderImage::run() {
                     QFileInfo source_info(file);
                     QString output_name = "image.png";
                     if(source_info.suffix().compare("yaml", Qt::CaseInsensitive) == 0 ||
-                       source_info.suffix().compare("yml", Qt::CaseInsensitive) == 0) {
+                       source_info.suffix().compare("yml", Qt::CaseInsensitive) == 0 ||
+                       source_info.suffix().compare("mks", Qt::CaseInsensitive) == 0) {
                         output_name = source_info.completeBaseName() + ".png";
                     }
                     QString storepath = source_info.absoluteDir().filePath(output_name);

@@ -83,6 +83,7 @@ MainWindow::MainWindow(const std::shared_ptr<QStringList> _log_messages, QWidget
     connect(this->listview_items, SIGNAL(currentRowChanged(int)), this, SLOT(slot_update_custom_zoom_level()));
     connect(this->widget_job_info->get_anaglyph_widget(), SIGNAL(signal_zoom_level()), this, SLOT(slot_update_custom_zoom_level()));
     connect(this->widget_job_info->get_anaglyph_widget(), SIGNAL(signal_object_angles()), this, SLOT(slot_update_custom_euler()));
+    connect(this->widget_job_info, SIGNAL(signal_render_single_job_requested(int)), this, SLOT(slot_parse_selected_job(int)));
 
     // set layout
     this->setMinimumWidth(1280);
@@ -516,6 +517,18 @@ void MainWindow::slot_parse_single_job() {
 }
 
 /**
+ * @brief slot_parse_selected_job.
+ */
+void MainWindow::slot_parse_selected_job(int jobid) {
+    if(jobid < 0 || jobid >= this->listview_items->count()) {
+        return;
+    }
+
+    this->listview_items->setCurrentRow(jobid);
+    this->slot_parse_single_job();
+}
+
+/**
  * @brief slot_select_folder.
  */
 void MainWindow::slot_select_folder() {
@@ -868,4 +881,3 @@ void MainWindow::slot_about() {
         message_box.setWindowIcon(QIcon(QString(":/assets/icons/%1.ico").arg(PROGRAM_NAME_LC)));
         message_box.exec();
 }
-
