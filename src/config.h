@@ -7,6 +7,6 @@
 
 #define PROGRAM_NAME "SlabRender"
 #define PROGRAM_NAME_LC "slabrender"
-#define PROGRAM_VERSION "0.2.0"
+#define PROGRAM_VERSION "0.3.0"
 
 #define UNUSED(x) (void)(x)
