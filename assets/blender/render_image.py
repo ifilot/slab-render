@@ -362,7 +362,11 @@ def build_atoms(atoms, lib, data):
     # construct atoms
     counter = 0
     atomlist = []
+    principal_count = int(data.get('principal_nr_atoms', len(atoms)))
     for counter,at in enumerate(atoms):
+
+        atom_id = counter + 1
+        principal_atom_id = ((atom_id - 1) % principal_count) + 1
 
         # copy materials
         bpy.data.materials[data['atmat']].copy().name = "atom%4i" % counter
@@ -376,7 +380,7 @@ def build_atoms(atoms, lib, data):
         if 'atom_radii' in data.keys():
             for mod in data['atom_radii']:
                 pieces = mod.split('/')
-                if pieces[0] == at[0] and (counter+1) >= int(pieces[1]) and (counter+1) <= int(pieces[2]):
+                if pieces[0] == at[0] and principal_atom_id >= int(pieces[1]) and principal_atom_id <= int(pieces[2]):
                     scale = float(pieces[3])
                 if pieces[0] == at[0] and int(pieces[1])==0 and int(pieces[2]) == 0:
                     scale = float(pieces[3])
@@ -399,7 +403,7 @@ def build_atoms(atoms, lib, data):
         if 'atom_colors' in data.keys():
             for mod in data['atom_colors']:
                 pieces = mod.split('/')
-                if pieces[0] == at[0] and (counter+1) >= int(pieces[1]) and (counter+1) <= int(pieces[2]):
+                if pieces[0] == at[0] and principal_atom_id >= int(pieces[1]) and principal_atom_id <= int(pieces[2]):
                     color = pieces[3]
                 if pieces[0] == at[0] and int(pieces[1])==0 and int(pieces[2]) == 0:
                     color = pieces[3]
@@ -425,7 +429,12 @@ def build_bonds(atoms, bonds, lib, data):
     material = bpy.data.materials.get('specular')
     ob.data.materials.append(material)
 
+    principal_count = int(data.get('principal_nr_atoms', len(atoms)))
+
     for i,bond in enumerate(bonds):
+
+        principal_bond_id_1 = (bond[2] % principal_count) + 1
+        principal_bond_id_2 = (bond[3] % principal_count) + 1
 
         # establish diameter
         scale1 = lib.get_scale(bond[0])
@@ -435,9 +444,9 @@ def build_bonds(atoms, bonds, lib, data):
         if 'atom_radii' in data.keys():
             for mod in data['atom_radii']:
                 pieces = mod.split('/')
-                if pieces[0] == bond[0] and (bond[2]+1) >= int(pieces[1]) and (bond[2]+1) <= int(pieces[2]):
+                if pieces[0] == bond[0] and principal_bond_id_1 >= int(pieces[1]) and principal_bond_id_1 <= int(pieces[2]):
                     scale1 = float(pieces[3])
-                if pieces[0] == bond[1] and (bond[3]+1) >= int(pieces[1]) and (bond[3]+1) <= int(pieces[2]):
+                if pieces[0] == bond[1] and principal_bond_id_2 >= int(pieces[1]) and principal_bond_id_2 <= int(pieces[2]):
                     scale2 = float(pieces[3])
                 if pieces[0] == bond[0] and int(pieces[1])==0 and int(pieces[2])==0:
                     scale1 = float(pieces[3])
@@ -486,7 +495,7 @@ def build_bonds(atoms, bonds, lib, data):
         if 'atom_colors' in data.keys():
             for mod in data['atom_colors']:
                 pieces = mod.split('/')
-                if pieces[0] == atoms[bond[2]][0] and (bond[2]+1) >= int(pieces[1]) and (bond[2]+1) <= int(pieces[2]):
+                if pieces[0] == atoms[bond[2]][0] and principal_bond_id_1 >= int(pieces[1]) and principal_bond_id_1 <= int(pieces[2]):
                     color = pieces[3]
                 if pieces[0] == atoms[bond[2]][0] and int(pieces[1])==0 and int(pieces[2])==0:
                     color = pieces[3]
@@ -522,7 +531,7 @@ def build_bonds(atoms, bonds, lib, data):
             if 'atom_colors' in data.keys():
                 for mod in data['atom_colors']:
                     pieces = mod.split('/')
-                    if pieces[0] == atoms[bond[3]][0] and (bond[3]+1) >= int(pieces[1]) and (bond[3]+1) <= int(pieces[2]):
+                    if pieces[0] == atoms[bond[3]][0] and principal_bond_id_2 >= int(pieces[1]) and principal_bond_id_2 <= int(pieces[2]):
                         color = pieces[3]
                     if pieces[0] == atoms[bond[3]][0] and int(pieces[1])==0 and int(pieces[2])==0:
                         color = pieces[3]

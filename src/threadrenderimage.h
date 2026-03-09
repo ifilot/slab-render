@@ -14,6 +14,7 @@
 #include <QMap>
 
 #include <fstream>
+#include <cstdint>
 #include <chrono>
 
 #include "structure_loader.h"
@@ -35,6 +36,8 @@ private:
     QVector<double> process_times;
 
     int single_job_id = -1;
+
+    uint32_t principal_nr_atoms = 0;
 
 public:
    /**

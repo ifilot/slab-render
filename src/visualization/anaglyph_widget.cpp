@@ -220,13 +220,14 @@ void AnaglyphWidget::paint_model() {
         this->pb.get_vao_sphere()->bind();
         for(unsigned int i=0; i<this->structure->get_atoms().size(); i++) {
             const Atom& atom = this->structure->get_atom(i);
+            const unsigned int atom_index = i + 1; // atom rules are 1-based
             this->model = base;
             this->model.translate(QVector3D(atom.x, atom.y, atom.z));
-            this->model.scale(AtomSettings::get().get_atom_radius_from_elnr(atom.atnr, i));
+            this->model.scale(AtomSettings::get().get_atom_radius_from_elnr(atom.atnr, atom_index));
             this->mvp = this->projection * this->view * this->model;
             model_shader->set_uniform("mvp", this->mvp);
             model_shader->set_uniform("model", this->model);
-            QVector3D col = AtomSettings::get().get_atom_color_from_elnr(atom.atnr, i);
+            QVector3D col = AtomSettings::get().get_atom_color_from_elnr(atom.atnr, atom_index);
 
             if(this->selected_atom >= 0 && this->selected_atom == i) {
                 col = (col + QVector3D(1.0, 1.0, 1.0)) / 2.0;
@@ -684,7 +685,8 @@ int AnaglyphWidget::get_atom_raycast(const QVector3D& ray_origin, const QVector3
         auto p = atom.get_pos();
         QVector3D pos = base.map(QVector3D(p[0], p[1], p[2]));
 
-        float radius = AtomSettings::get().get_atom_radius_from_elnr(atom.atnr, i);
+        const unsigned int atom_index = i + 1; // atom rules are 1-based
+        float radius = AtomSettings::get().get_atom_radius_from_elnr(atom.atnr, atom_index);
         float b = QVector3D::dotProduct(ray_vector, ray_origin - pos);
         float c = QVector3D::dotProduct(ray_origin - pos, ray_origin - pos) - (radius * radius);
 

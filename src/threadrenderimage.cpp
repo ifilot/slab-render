@@ -193,6 +193,7 @@ void ThreadRenderImage::create_atompack(const QString& path) {
 
         // write atoms
         uint32_t nr_atoms = structure->get_nr_atoms();
+        this->principal_nr_atoms = nr_atoms;
         out.write((char*)&nr_atoms, sizeof(uint32_t));
         for(const auto& atom : structure->get_atoms()) {
             const uint8_t atnr = atom.atnr;
@@ -275,6 +276,7 @@ void ThreadRenderImage::build_manifest_file(const QString& path)
     root["tile_y"]       = this->parameters["tile_y"].toInt();
     root["samples"]      = this->parameters["samples"].toInt();
     root["nsubdiv"]      = this->parameters["nsubdiv"].toInt();
+    root["principal_nr_atoms"] = static_cast<int>(this->principal_nr_atoms);
 
     // --- merge custom JSON safely ---
     const QString custom = this->parameters["custom_json"].toString().trimmed();
