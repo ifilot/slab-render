@@ -1,18 +1,22 @@
 #!/usr/bin/env python3
 
-#
-# Copyright (C) Inorganic Materials & Catalysis - All Rights Reserved
-#
-# Unauthorized copying of this file, via any medium is strictly prohibited
-# Proprietary and confidential
-#
-
 import bpy
 
 def main():
-    cuda_devices, opencl_devices = bpy.context.preferences.addons['cycles'].preferences.get_devices()
-    for device in cuda_devices:
-        print(device)
+    # Get Cycles addon preferences
+    cycles_prefs = bpy.context.preferences.addons['cycles'].preferences
 
-if __name__ == '__main__':
+    # Force device discovery (important!)
+    cycles_prefs.get_devices()
+
+    print("Compute device type:", cycles_prefs.compute_device_type)
+
+    for device in cycles_prefs.devices:
+        print(
+            f"Name: {device.name}, "
+            f"Type: {device.type}, "
+            f"Use: {device.use}"
+        )
+
+if __name__ == "__main__":
     main()

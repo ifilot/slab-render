@@ -1,24 +1,11 @@
-/****************************************************************************
- *                                                                          *
- *   Rubriks Cube                                                           *
- *   Copyright (C) 2022 Ivo Filot <ivo@ivofilot.nl>                         *
- *                                                                          *
- *   This program is free software: you can redistribute it and/or modify   *
- *   it under the terms of the GNU Lesser General Public License as         *
- *   published by the Free Software Foundation, either version 3 of the     *
- *   License, or (at your option) any later version.                        *
- *                                                                          *
- *   This program is distributed in the hope that it will be useful,        *
- *   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          *
- *   GNU General Public License for more details.                           *
- *                                                                          *
- *   You should have received a copy of the GNU General Public license      *
- *   along with this program.  If not, see <https://www.gnu.org/licenses/>. *
- *                                                                          *
- ****************************************************************************/
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// SlabRender
+// Author: Ivo Filot <ivo@ivofilot.nl>
+
 
 #include "anaglyph_widget.h"
+
+#include <algorithm>
 
 AnaglyphWidget::AnaglyphWidget(QWidget *parent)
     : QOpenGLWidget(parent) {
@@ -38,24 +25,39 @@ AnaglyphWidget::AnaglyphWidget(QWidget *parent)
     this->reset_matrices();
 }
 
+/**
+ * @brief AnaglyphWidget destructor.
+ */
 AnaglyphWidget::~AnaglyphWidget() {
     cleanup();
 }
 
+/**
+ * @brief minimumSizeHint.
+ */
 QSize AnaglyphWidget::minimumSizeHint() const {
     return QSize(50, 50);
 }
 
+/**
+ * @brief sizeHint.
+ */
 QSize AnaglyphWidget::sizeHint() const {
     return QSize(400, 400);
 }
 
+/**
+ * @brief cleanup.
+ */
 void AnaglyphWidget::cleanup() {
     makeCurrent();
     this->release_models();
     doneCurrent();
 }
 
+/**
+ * @brief slot_load_structure.
+ */
 void AnaglyphWidget::slot_load_structure(int structure_id) {
     if(structure_id < 0) {
         this->structure.reset();
@@ -83,7 +85,7 @@ void AnaglyphWidget::initializeGL() {
         this->axes_models[i]->load_to_vao();
     }
 
-    glClearColor(0.8f, 0.8f, 0.8f, 1.0f);
+    glClearColor(0.976f, 0.976f, 0.976f, 1.0f);
 
     this->load_shaders();
 
@@ -218,13 +220,14 @@ void AnaglyphWidget::paint_model() {
         this->pb.get_vao_sphere()->bind();
         for(unsigned int i=0; i<this->structure->get_atoms().size(); i++) {
             const Atom& atom = this->structure->get_atom(i);
+            const unsigned int atom_index = i + 1; // atom rules are 1-based
             this->model = base;
             this->model.translate(QVector3D(atom.x, atom.y, atom.z));
-            this->model.scale(AtomSettings::get().get_atom_radius_from_elnr(atom.atnr));
+            this->model.scale(AtomSettings::get().get_atom_radius_from_elnr(atom.atnr, atom_index));
             this->mvp = this->projection * this->view * this->model;
             model_shader->set_uniform("mvp", this->mvp);
             model_shader->set_uniform("model", this->model);
-            QVector3D col = AtomSettings::get().get_atom_color_from_elnr(atom.atnr);
+            QVector3D col = AtomSettings::get().get_atom_color_from_elnr(atom.atnr, atom_index);
 
             if(this->selected_atom >= 0 && this->selected_atom == i) {
                 col = (col + QVector3D(1.0, 1.0, 1.0)) / 2.0;
@@ -242,8 +245,8 @@ void AnaglyphWidget::paint_model() {
             this->model.translate(QVector3D(bond.atom1.x, bond.atom1.y, bond.atom1.z));
             this->model.rotate(bond.angle / M_PI * 180.f, QVector3D(bond.axis[0], bond.axis[1], bond.axis[2]));
 
-            float r1 = AtomSettings::get().get_atom_radius_from_elnr(bond.atom1.atnr);
-            float r2 = AtomSettings::get().get_atom_radius_from_elnr(bond.atom2.atnr);
+            float r1 = AtomSettings::get().get_atom_radius_from_elnr(bond.atom1.atnr, bond.atom_id_1);
+            float r2 = AtomSettings::get().get_atom_radius_from_elnr(bond.atom2.atnr, bond.atom_id_2);
             float r = std::min(r1,r2) / 2.0f;
 
             this->model.scale(QVector3D(r, r, bond.length));
@@ -407,9 +410,36 @@ QVector3D AnaglyphWidget::get_arcball_vector(int x, int y) {
     return P;
 }
 
+/**
+ * @brief set_arcball_rotation.
+ */
 void AnaglyphWidget::set_arcball_rotation(float arcball_angle, const QVector4D& arcball_vector) {
     this->arcball_rotation.setToIdentity();
     this->arcball_rotation.rotate(arcball_angle, QVector3D(arcball_vector));
+    this->update();
+}
+
+/**
+ * @brief set_euler_angles.
+ */
+void AnaglyphWidget::set_euler_angles(const QVector3D& euler_angles) {
+    this->arcball_rotation.setToIdentity();
+    this->rotation_matrix.setToIdentity();
+    this->rotation_matrix.rotate(QQuaternion::fromEulerAngles(euler_angles));
+    emit(signal_object_angles());
+    this->update();
+}
+
+/**
+ * @brief set_zoom_level.
+ */
+void AnaglyphWidget::set_zoom_level(float zoom_level) {
+    this->camera_position[2] = std::max(zoom_level, 5.0f);
+    float ratio = (float)this->width() / (float)this->height();
+    float zoom = this->camera_position[2];
+    this->projection.setToIdentity();
+    this->projection.ortho(-zoom/2.0f, zoom/2.0f, -zoom / ratio /2.0f, zoom / ratio / 2.0f, 0.01f, 1000.0f);
+    emit(signal_zoom_level());
     this->update();
 }
 
@@ -435,12 +465,18 @@ void AnaglyphWidget::wheelEvent(QWheelEvent *event) {
     this->update();
 }
 
+/**
+ * @brief update.
+ */
 void AnaglyphWidget::update() {
     QOpenGLWidget::update();
     emit(signal_object_angles());
 
 }
 
+/**
+ * @brief process_input.
+ */
 void AnaglyphWidget::process_input() {
     // also apply a z-axis rotation if rotation is enabled
     if(this->flag_rotation) {
@@ -481,11 +517,17 @@ void AnaglyphWidget::release_models() {
 
 }
 
+/**
+ * @brief window_move_event.
+ */
 void AnaglyphWidget::window_move_event() {
     this->top_left = mapToGlobal(QPoint(0, 0));
     this->update();
 }
 
+/**
+ * @brief set_stereo.
+ */
 void AnaglyphWidget::set_stereo(QString stereo_name) {
     if (!stereo_name.isNull()) {
         // set stereoscopic projection
@@ -520,8 +562,10 @@ void AnaglyphWidget::draw_axes() {
     projection_ortho.ortho(-sz, sz, -sz * ratio, sz * ratio, 0.1f, 1000.0f);
 
     this->view.setToIdentity();
-    this->view.lookAt(QVector3D(0.0, 0.0, 10.0), QVector3D(0.0, 0.0, 0.0), QVector3D(0.0, 1.0, 0.0));
+    const QVector3D axes_camera_position(0.0f, 0.0f, 10.0f);
+    this->view.lookAt(axes_camera_position, QVector3D(0.0, 0.0, 0.0), QVector3D(0.0, 1.0, 0.0));
     axes_shader->set_uniform("view", this->view);
+    axes_shader->set_uniform("light_pos", axes_camera_position);
     QMatrix4x4 axis_rotation;
     this->model.setToIdentity();
 
@@ -623,6 +667,9 @@ void AnaglyphWidget::calculate_ray(const QPoint& mouse_position, QVector3D* ray_
  *
  * @return index of the atom
  */
+/**
+ * @brief get_atom_raycast.
+ */
 int AnaglyphWidget::get_atom_raycast(const QVector3D& ray_origin, const QVector3D& ray_vector) {
     int selected_atom = -1;
     float z = -1000;
@@ -640,7 +687,8 @@ int AnaglyphWidget::get_atom_raycast(const QVector3D& ray_origin, const QVector3
         auto p = atom.get_pos();
         QVector3D pos = base.map(QVector3D(p[0], p[1], p[2]));
 
-        float radius = AtomSettings::get().get_atom_radius_from_elnr(atom.atnr);
+        const unsigned int atom_index = i + 1; // atom rules are 1-based
+        float radius = AtomSettings::get().get_atom_radius_from_elnr(atom.atnr, atom_index);
         float b = QVector3D::dotProduct(ray_vector, ray_origin - pos);
         float c = QVector3D::dotProduct(ray_origin - pos, ray_origin - pos) - (radius * radius);
 

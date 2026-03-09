@@ -15,7 +15,155 @@ from os.path import dirname
 import json
 import struct
 import bmesh
-import json
+from mathutils import Vector
+
+def set_material_subsurface(material_name, value):
+    material = bpy.data.materials.get(material_name)
+    if material is None:
+        print("Material '%s' not found, cannot set subsurface" % material_name)
+        return
+
+    if not material.use_nodes or material.node_tree is None:
+        print("Material '%s' does not use nodes, cannot set subsurface" % material_name)
+        return
+
+    principled = material.node_tree.nodes.get('Principled BSDF')
+    if principled is None:
+        print("Material '%s' has no Principled BSDF node" % material_name)
+        return
+
+    subsurface_inputs = ['Subsurface', 'Subsurface Weight']
+    for input_name in subsurface_inputs:
+        if input_name in principled.inputs:
+            principled.inputs[input_name].default_value = value
+            print("Set %s for material '%s' to %0.2f" % (input_name, material_name, value))
+            return
+
+    print("Material '%s' has no Subsurface/Subsurface Weight input" % material_name)
+
+
+def set_material_subsurface_color(material_name, color=(0.0, 0.0, 0.0, 1.0)):
+    material = bpy.data.materials.get(material_name)
+    if material is None:
+        print("Material '%s' not found, cannot set subsurface color" % material_name)
+        return
+
+    if not material.use_nodes or material.node_tree is None:
+        print("Material '%s' does not use nodes, cannot set subsurface color" % material_name)
+        return
+
+    principled = material.node_tree.nodes.get('Principled BSDF')
+    if principled is None:
+        print("Material '%s' has no Principled BSDF node" % material_name)
+        return
+
+    if 'Subsurface Color' in principled.inputs:
+        principled.inputs['Subsurface Color'].default_value = color
+        print("Set Subsurface Color for material '%s' to %s" % (material_name, color))
+    else:
+        print("Material '%s' has no Subsurface Color input" % material_name)
+
+
+def set_scene_background(background_color=None):
+    world = bpy.context.scene.world
+    if world is None:
+        world = bpy.data.worlds.new('World')
+        bpy.context.scene.world = world
+
+    world.use_nodes = True
+    background = world.node_tree.nodes.get('Background')
+    if background is None:
+        print("No Background node found in world shader")
+        return
+
+    current = tuple(background.inputs['Color'].default_value)
+    print('Current scene background color: %s' % (current,))
+
+    if background_color is None:
+        background_color = (0.3, 0.3, 0.3)
+
+    background.inputs['Color'].default_value = (
+        float(background_color[0]),
+        float(background_color[1]),
+        float(background_color[2]),
+        1.0,
+    )
+    print('Set scene background color to %s' % (background_color,))
+
+
+
+
+def parse_hex_color(color_str, fallback=(1.0, 1.0, 1.0)):
+    if not isinstance(color_str, str):
+        return fallback
+
+    value = color_str.strip()
+    if value.startswith('#'):
+        value = value[1:]
+
+    if len(value) != 6:
+        return fallback
+
+    try:
+        r = int(value[0:2], 16) / 255.0
+        g = int(value[2:4], 16) / 255.0
+        b = int(value[4:6], 16) / 255.0
+        return (r, g, b)
+    except ValueError:
+        return fallback
+
+
+def set_main_light_settings(camera_object, highest_z_point, left_light_settings, right_light_settings):
+    # remove all light objects (including Blender default startup light)
+    light_objects = [obj for obj in bpy.data.objects if obj.type == 'LIGHT']
+    for obj in light_objects:
+        bpy.data.objects.remove(obj, do_unlink=True)
+
+    cam_quat = camera_object.matrix_world.to_quaternion()
+
+    center = Vector((0.0, 0.0, 0.0))
+    default_anchor = Vector((0.0, 0.0, float(highest_z_point) + 20.0))
+    default_left = Vector((-20.0, 0.0, 0.0))
+    default_right = Vector((20.0, 0.0, 0.0))
+
+    anchor = cam_quat @ default_anchor
+    left_position = anchor + cam_quat @ default_left
+    right_position = anchor + cam_quat @ default_right
+
+    lights = [
+        ('SlabRenderAreaLightLeft', left_position, left_light_settings),
+        ('SlabRenderAreaLightRight', right_position, right_light_settings),
+    ]
+
+    for light_name, light_position, light_settings in lights:
+        light_data = bpy.data.lights.new(name=light_name, type='AREA')
+        light_data.shape = 'SQUARE'
+        light_data.color = (
+            float(light_settings['color'][0]),
+            float(light_settings['color'][1]),
+            float(light_settings['color'][2]),
+        )
+        light_data.size = max(0.01, float(light_settings['size']))
+        light_data.energy = max(0.0, float(light_settings['intensity']))
+
+        light_object = bpy.data.objects.new(light_name, light_data)
+        bpy.context.scene.collection.objects.link(light_object)
+        light_object.location = light_position
+
+        look_vec = center - light_position
+        if look_vec.length > 1e-8:
+            light_object.rotation_euler = look_vec.to_track_quat('-Z', 'Y').to_euler()
+
+        print("Created area light '%s'" % light_name)
+        print('Set light color to %s' % (light_settings['color'],))
+        print('Set light intensity to %s' % light_data.energy)
+        print('Set light area size to %s' % light_data.size)
+        print('Set light location to %s' % (tuple(light_object.location),))
+
+
+def set_film_transparent(enabled=True):
+    bpy.context.scene.render.film_transparent = enabled
+    print('Set Film > Transparent to %s' % enabled)
 
 def main():
     # read input and output file
@@ -25,6 +173,7 @@ def main():
     inputfile = argv[0]
     binfile = argv[1]
     outfile = argv[2]
+    mode = argv[3] if len(argv) > 3 else "render_image"
     print("Reading: %s" % inputfile)
 
     print("Searching for GPUs")
@@ -35,6 +184,26 @@ def main():
     print('Render settings:')
     print(data)
 
+    scene_background_color = parse_hex_color(data.get('scene_background_color', '#CCCCCC'), (0.8, 0.8, 0.8))
+
+    left_light_color = parse_hex_color(data.get('light_left_color', data.get('light_color', '#FFFFFF')), (1.0, 1.0, 1.0))
+    right_light_color = parse_hex_color(data.get('light_right_color', data.get('light_color', '#FFFFFF')), (1.0, 1.0, 1.0))
+
+    base_intensity = data.get('relative_light_intensity', data.get('light_intensity', 10000.0))
+    left_light_intensity = float(data.get('light_left_intensity', base_intensity))
+    right_light_intensity = float(data.get('light_right_intensity', base_intensity))
+
+    base_size = data.get('light_area_size', None)
+    left_light_size = float(data['light_left_area_size']) if 'light_left_area_size' in data else float(base_size if base_size is not None else 50.0)
+    right_light_size = float(data['light_right_area_size']) if 'light_right_area_size' in data else float(base_size if base_size is not None else 25.0)
+
+    set_material_subsurface('specular', 0.3)
+    set_material_subsurface('soft', 0.3)
+    set_material_subsurface_color('specular', (0.0, 0.0, 0.0, 1.0))
+    set_material_subsurface_color('soft', (0.0, 0.0, 0.0, 1.0))
+    set_scene_background(scene_background_color)
+    set_film_transparent(True)
+
     if 'hide_axes' in data.keys():
         if data['hide_axes'] == True:
             bpy.data.collections['Coordinate axes'].hide_render = True
@@ -43,7 +212,7 @@ def main():
             print('Enable rendering of coordinate axes')
 
     # build molecule
-    matrix = build_molecule(binfile, data)
+    matrix, highest_z_point = build_molecule(binfile, data)
     autoscale = max(np.linalg.norm(matrix[:,0]), np.linalg.norm(matrix[:,1]))
 
     # show the unitcell dimensions using dashed lines
@@ -51,10 +220,17 @@ def main():
         show_unitcell(matrix, data)
 
     # add a camera
-    build_camera(data, autoscale)
+    camera_object = build_camera(data, autoscale)
+    set_main_light_settings(camera_object, highest_z_point,
+                            {'color': left_light_color, 'intensity': left_light_intensity, 'size': left_light_size},
+                            {'color': right_light_color, 'intensity': right_light_intensity, 'size': right_light_size})
 
-    # run single image with just the geometry
-    run_render(outfile, data)
+    # run single image with just the geometry or save blender file
+    if mode == "save_blend":
+        bpy.ops.wm.save_as_mainfile(filepath=outfile)
+        print("Saved Blender file to %s" % outfile)
+    else:
+        run_render(outfile, data)
 
 def run_render(filename, data):
     scene = bpy.context.scene
@@ -197,7 +373,9 @@ def build_molecule(xyzfile, data):
         build_atoms(atoms_expansion, lib, data)
         build_bonds(atoms + atoms_expansion, bonds_expansion, lib, data)
 
-    return matrix
+    highest_z_point = max([at[3] for at in atoms] + ([at[3] for at in atoms_expansion] if data['expansion'] == True else [float('-inf')]))
+
+    return matrix, highest_z_point
 
 def show_unitcell(matrix, data):
     """
@@ -320,6 +498,9 @@ def build_camera(data, autoscale):
     elif data['camera_direction'] == 'Y-':
         location = [0.0, -100.0, 0.0]
         rotation = [np.pi/2.0, 0.0, 0.0]
+    elif data['camera_direction'] == 'custom':
+        location = [0.0, 0.0, 100.0]
+        rotation = [0.0, 0.0, 0.0]
 
     # if a camera position is specified, overwrite the
     # default position from the direction
@@ -340,6 +521,7 @@ def build_camera(data, autoscale):
         camera_object.data.ortho_scale = float(data['ortho_scale'])
     print("Setting camera ortho scale to %f" % camera_object.data.ortho_scale)
     camera_object.data.clip_end = 1000
+    return camera_object
 
 def build_atoms(atoms, lib, data):
     """
@@ -359,7 +541,11 @@ def build_atoms(atoms, lib, data):
     # construct atoms
     counter = 0
     atomlist = []
+    principal_count = int(data.get('principal_nr_atoms', len(atoms)))
     for counter,at in enumerate(atoms):
+
+        atom_id = counter + 1
+        principal_atom_id = ((atom_id - 1) % principal_count) + 1
 
         # copy materials
         bpy.data.materials[data['atmat']].copy().name = "atom%4i" % counter
@@ -373,7 +559,7 @@ def build_atoms(atoms, lib, data):
         if 'atom_radii' in data.keys():
             for mod in data['atom_radii']:
                 pieces = mod.split('/')
-                if pieces[0] == at[0] and (counter+1) >= int(pieces[1]) and (counter+1) <= int(pieces[2]):
+                if pieces[0] == at[0] and principal_atom_id >= int(pieces[1]) and principal_atom_id <= int(pieces[2]):
                     scale = float(pieces[3])
                 if pieces[0] == at[0] and int(pieces[1])==0 and int(pieces[2]) == 0:
                     scale = float(pieces[3])
@@ -396,7 +582,7 @@ def build_atoms(atoms, lib, data):
         if 'atom_colors' in data.keys():
             for mod in data['atom_colors']:
                 pieces = mod.split('/')
-                if pieces[0] == at[0] and (counter+1) >= int(pieces[1]) and (counter+1) <= int(pieces[2]):
+                if pieces[0] == at[0] and principal_atom_id >= int(pieces[1]) and principal_atom_id <= int(pieces[2]):
                     color = pieces[3]
                 if pieces[0] == at[0] and int(pieces[1])==0 and int(pieces[2]) == 0:
                     color = pieces[3]
@@ -422,7 +608,12 @@ def build_bonds(atoms, bonds, lib, data):
     material = bpy.data.materials.get('specular')
     ob.data.materials.append(material)
 
+    principal_count = int(data.get('principal_nr_atoms', len(atoms)))
+
     for i,bond in enumerate(bonds):
+
+        principal_bond_id_1 = (bond[2] % principal_count) + 1
+        principal_bond_id_2 = (bond[3] % principal_count) + 1
 
         # establish diameter
         scale1 = lib.get_scale(bond[0])
@@ -432,9 +623,9 @@ def build_bonds(atoms, bonds, lib, data):
         if 'atom_radii' in data.keys():
             for mod in data['atom_radii']:
                 pieces = mod.split('/')
-                if pieces[0] == bond[0] and (bond[2]+1) >= int(pieces[1]) and (bond[2]+1) <= int(pieces[2]):
+                if pieces[0] == bond[0] and principal_bond_id_1 >= int(pieces[1]) and principal_bond_id_1 <= int(pieces[2]):
                     scale1 = float(pieces[3])
-                if pieces[0] == bond[1] and (bond[3]+1) >= int(pieces[1]) and (bond[3]+1) <= int(pieces[2]):
+                if pieces[0] == bond[1] and principal_bond_id_2 >= int(pieces[1]) and principal_bond_id_2 <= int(pieces[2]):
                     scale2 = float(pieces[3])
                 if pieces[0] == bond[0] and int(pieces[1])==0 and int(pieces[2])==0:
                     scale1 = float(pieces[3])
@@ -483,7 +674,7 @@ def build_bonds(atoms, bonds, lib, data):
         if 'atom_colors' in data.keys():
             for mod in data['atom_colors']:
                 pieces = mod.split('/')
-                if pieces[0] == atoms[bond[2]][0] and (bond[2]+1) >= int(pieces[1]) and (bond[2]+1) <= int(pieces[2]):
+                if pieces[0] == atoms[bond[2]][0] and principal_bond_id_1 >= int(pieces[1]) and principal_bond_id_1 <= int(pieces[2]):
                     color = pieces[3]
                 if pieces[0] == atoms[bond[2]][0] and int(pieces[1])==0 and int(pieces[2])==0:
                     color = pieces[3]
@@ -519,7 +710,7 @@ def build_bonds(atoms, bonds, lib, data):
             if 'atom_colors' in data.keys():
                 for mod in data['atom_colors']:
                     pieces = mod.split('/')
-                    if pieces[0] == atoms[bond[3]][0] and (bond[3]+1) >= int(pieces[1]) and (bond[3]+1) <= int(pieces[2]):
+                    if pieces[0] == atoms[bond[3]][0] and principal_bond_id_2 >= int(pieces[1]) and principal_bond_id_2 <= int(pieces[2]):
                         color = pieces[3]
                     if pieces[0] == atoms[bond[3]][0] and int(pieces[1])==0 and int(pieces[2])==0:
                         color = pieces[3]

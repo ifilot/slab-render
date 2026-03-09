@@ -1,23 +1,12 @@
-/********************************************************************************
- * This file is part of Saucepan                                                *
- *                                                                              *
- * Author: Ivo Filot <i.a.w.filot@tue.nl>                                       *
- *                                                                              *
- * This program is free software; you can redistribute it and/or                *
- * modify it under the terms of the GNU Lesser General Public                   *
- * License as published by the Free Software Foundation; either                 *
- * version 3 of the License, or (at your option) any later version.             *
- *                                                                              *
- * This program is distributed in the hope that it will be useful,              *
- * but WITHOUT ANY WARRANTY; without even the implied warranty of               *
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU            *
- * Lesser General Public License for more details.                              *
- *                                                                              *
- * You should have received a copy of the GNU Lesser General Public License     *
- * along with this program; if not, write to the Free Software Foundation,      *
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.          *
- ********************************************************************************/
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// SlabRender
+// Author: Ivo Filot <ivo@ivofilot.nl>
+
 #include "mainwindow.h"
+#include "color_picker_dialog.h"
+
+#include <QJsonDocument>
+#include <QJsonParseError>
 
 MainWindow::MainWindow(const std::shared_ptr<QStringList> _log_messages, QWidget *parent)
     : QMainWindow(parent),
@@ -76,6 +65,7 @@ MainWindow::MainWindow(const std::shared_ptr<QStringList> _log_messages, QWidget
     layout_buttons->addWidget(this->button_parse_files);
     this->button_run_single_job = new QPushButton("Run single job");
     layout_buttons->addWidget(this->button_run_single_job);
+    this->button_run_single_job->setEnabled(false);
     this->button_parse_files->setEnabled(false);
     this->button_cancel = new QPushButton("Cancel");
     layout_buttons->addWidget(this->button_cancel);
@@ -91,8 +81,15 @@ MainWindow::MainWindow(const std::shared_ptr<QStringList> _log_messages, QWidget
     connect(this->button_run_single_job, SIGNAL(released()), this, SLOT(slot_parse_single_job()));
     connect(this->listview_items, SIGNAL(currentRowChanged(int)), this->widget_job_info, SLOT(slot_update_job_info(int)));
     connect(this->listview_items, SIGNAL(currentRowChanged(int)), this->widget_job_info->get_anaglyph_widget(), SLOT(slot_load_structure(int)));
-    connect(this->widget_job_info->get_pushbutton_angle_json(), SIGNAL(released()), this, SLOT(slot_add_object_angles()));
-    connect(this->widget_job_info->get_pushbutton_insert_zoom_level(), SIGNAL(released()), this, SLOT(slot_set_zoom_level()));
+    connect(this->listview_items, SIGNAL(currentRowChanged(int)), this, SLOT(slot_update_custom_euler()));
+    connect(this->listview_items, SIGNAL(currentRowChanged(int)), this, SLOT(slot_update_custom_zoom_level()));
+    connect(this->listview_items, &QListWidget::currentRowChanged, this, [this](int row) {
+        this->button_run_single_job->setEnabled(row >= 0);
+    });
+    connect(this->widget_job_info->get_anaglyph_widget(), SIGNAL(signal_zoom_level()), this, SLOT(slot_update_custom_zoom_level()));
+    connect(this->widget_job_info->get_anaglyph_widget(), SIGNAL(signal_object_angles()), this, SLOT(slot_update_custom_euler()));
+    connect(this->widget_job_info, SIGNAL(signal_render_single_job_requested(int)), this, SLOT(slot_parse_selected_job(int)));
+    connect(this->widget_job_info, SIGNAL(signal_save_blend_single_job_requested(int)), this, SLOT(slot_save_blend_selected_job(int)));
 
     // set layout
     this->setMinimumWidth(1280);
@@ -101,9 +98,6 @@ MainWindow::MainWindow(const std::shared_ptr<QStringList> _log_messages, QWidget
 
     //  build blender settings interface
     build_blender_settings_panel(layout_right);
-
-    // connect buttons for Blender settings panel
-    connect(this->button_rebuild_structures, SIGNAL(released()), this, SLOT(slot_rebuild_structures()));
 
     this->build_dropdown_menu();
 }
@@ -125,6 +119,16 @@ void MainWindow::build_dropdown_menu() {
     action_open->setShortcuts(QKeySequence::Open);
     menuFile->addAction(action_open);
     connect(action_open, &QAction::triggered, this, &MainWindow::slot_select_folder);
+
+    QAction *action_load_render_settings = new QAction(menuFile);
+    action_load_render_settings->setText(tr("Load render settings..."));
+    menuFile->addAction(action_load_render_settings);
+    connect(action_load_render_settings, &QAction::triggered, this, &MainWindow::slot_load_render_settings);
+
+    QAction *action_save_render_settings = new QAction(menuFile);
+    action_save_render_settings->setText(tr("Save render settings..."));
+    menuFile->addAction(action_save_render_settings);
+    connect(action_save_render_settings, &QAction::triggered, this, &MainWindow::slot_save_render_settings);
 
     // quit
     QAction *action_quit = new QAction(menuFile);
@@ -151,6 +155,9 @@ void MainWindow::build_dropdown_menu() {
     setMenuBar(menuBar);
 }
 
+/**
+ * @brief build_blender_settings_panel.
+ */
 void MainWindow::build_blender_settings_panel(QVBoxLayout* layout) {
     // custom icon for tooltips
     QIcon icon_info = QIcon(":/assets/icons/info.png");
@@ -206,6 +213,42 @@ void MainWindow::build_blender_settings_panel(QVBoxLayout* layout) {
     this->combobox_camera_direction->addItem("Y-");
     this->combobox_camera_direction->addItem("X+");
     this->combobox_camera_direction->addItem("X-");
+    this->combobox_camera_direction->addItem("custom");
+
+    rownr++;
+    layout_blender_settings->addWidget(new QLabel("Euler x/y/z"), rownr, 0);
+    QWidget* custom_euler_widget = new QWidget();
+    QHBoxLayout* custom_euler_layout = new QHBoxLayout();
+    custom_euler_layout->setContentsMargins(0,0,0,0);
+    custom_euler_widget->setLayout(custom_euler_layout);
+    this->spinbox_custom_euler_x = new QDoubleSpinBox();
+    this->spinbox_custom_euler_y = new QDoubleSpinBox();
+    this->spinbox_custom_euler_z = new QDoubleSpinBox();
+    this->spinbox_custom_euler_x->setRange(-360.0, 360.0);
+    this->spinbox_custom_euler_y->setRange(-360.0, 360.0);
+    this->spinbox_custom_euler_z->setRange(-360.0, 360.0);
+    this->spinbox_custom_euler_x->setDecimals(2);
+    this->spinbox_custom_euler_y->setDecimals(2);
+    this->spinbox_custom_euler_z->setDecimals(2);
+    this->spinbox_custom_euler_x->setSingleStep(1.0);
+    this->spinbox_custom_euler_y->setSingleStep(1.0);
+    this->spinbox_custom_euler_z->setSingleStep(1.0);
+    connect(this->spinbox_custom_euler_x, SIGNAL(valueChanged(double)), this, SLOT(slot_set_custom_euler()));
+    connect(this->spinbox_custom_euler_y, SIGNAL(valueChanged(double)), this, SLOT(slot_set_custom_euler()));
+    connect(this->spinbox_custom_euler_z, SIGNAL(valueChanged(double)), this, SLOT(slot_set_custom_euler()));
+    custom_euler_layout->addWidget(this->spinbox_custom_euler_x);
+    custom_euler_layout->addWidget(this->spinbox_custom_euler_y);
+    custom_euler_layout->addWidget(this->spinbox_custom_euler_z);
+    layout_blender_settings->addWidget(custom_euler_widget, rownr, 1);
+
+    connect(this->spinbox_custom_ortho_scale,
+            qOverload<double>(&QDoubleSpinBox::valueChanged),
+            this,
+            [this](double value) {
+                if(this->combobox_ortho_scale->currentIndex() == 1) {
+                    this->widget_job_info->get_anaglyph_widget()->set_zoom_level(static_cast<float>(value));
+                }
+            });
 
     // whether to hide the axes
     rownr++;
@@ -244,24 +287,6 @@ void MainWindow::build_blender_settings_panel(QVBoxLayout* layout) {
     this->spinbox_resolution_y->setMaximum(2048);
     this->spinbox_resolution_y->setValue(512);
 
-    // tile size in x direction
-    rownr++;
-    layout_blender_settings->addWidget(new QLabel("Tile x"), rownr, 0);
-    this->spinbox_tile_x = new QSpinBox();
-    layout_blender_settings->addWidget(this->spinbox_tile_x, rownr, 1);
-    this->spinbox_tile_x->setMinimum(128);
-    this->spinbox_tile_x->setMaximum(2048);
-    this->spinbox_tile_x->setValue(256);
-
-    // tile size in y direction
-    rownr++;
-    layout_blender_settings->addWidget(new QLabel("Tile y"), rownr, 0);
-    this->spinbox_tile_y = new QSpinBox();
-    layout_blender_settings->addWidget(this->spinbox_tile_y, rownr, 1);
-    this->spinbox_tile_y->setMinimum(128);
-    this->spinbox_tile_y->setMaximum(2048);
-    this->spinbox_tile_y->setValue(256);
-
     // number of samples
     rownr++;
     layout_blender_settings->addWidget(new QLabel("Samples"), rownr, 0);
@@ -296,26 +321,102 @@ void MainWindow::build_blender_settings_panel(QVBoxLayout* layout) {
     this->combobox_bond_material->setCurrentIndex(1);
 
     rownr++;
-    layout_blender_settings->addWidget(new QLabel("Custom settings (json)"), rownr, 0);
-    QLabel* tooltip_info = new QLabel;
-    tooltip_info->setPixmap(pixmap_info);
-    tooltip_info->setToolTip(this->fetch_tooltip_text("custom_json_example"));
-    tooltip_info->setFixedWidth(20);
-    layout_blender_settings->addWidget(tooltip_info, rownr, 2);
-    rownr++;
-    this->plaintext_modding = new QPlainTextEdit();
-    layout_blender_settings->addWidget(this->plaintext_modding, rownr, 0, 1, 2);
-    this->plaintext_modding->setPlainText("\"atom_colors\": [\n\n],\n\"atom_radii\": [\n\n],\n\"bond_distances\": [\n\n],");
-    connect(this->plaintext_modding, SIGNAL(textChanged()), this, SLOT(slot_check_valid_json()));
-    rownr++;
-    this->label_valid_json = new QLabel("JSON validation pass");
-    this->label_valid_json->setStyleSheet("QLabel { background-color : green; color : white; }");
-    layout_blender_settings->addWidget(this->label_valid_json, rownr, 0, 1, 2);
+    layout_blender_settings->addWidget(new QLabel("Background color"), rownr, 0);
+    this->button_background_color = new QPushButton();
+    this->button_background_color->setText(this->background_color.name(QColor::HexRgb).toUpper());
+    this->update_color_button_style(this->button_background_color, this->background_color);
+    layout_blender_settings->addWidget(this->button_background_color, rownr, 1);
+    connect(this->button_background_color, &QPushButton::released, this, [this]() {
+        ColorPickerDialog dlg(this->background_color, this);
+        if(dlg.exec() == QDialog::Accepted) {
+            this->background_color = dlg.color();
+            this->button_background_color->setText(this->background_color.name(QColor::HexRgb).toUpper());
+            this->update_color_button_style(this->button_background_color, this->background_color);
+        }
+    });
 
-    // rebuild images
     rownr++;
-    this->button_rebuild_structures = new QPushButton("Rebuild structures");
-    layout_blender_settings->addWidget(this->button_rebuild_structures, rownr, 0);
+    QGroupBox* groupbox_lighting = new QGroupBox("lighting");
+    layout_blender_settings->addWidget(groupbox_lighting, rownr, 0, 1, 2);
+    QGridLayout* layout_lighting = new QGridLayout();
+    groupbox_lighting->setLayout(layout_lighting);
+
+    int light_row = 0;
+    layout_lighting->addWidget(new QLabel("Left light color"), light_row, 0);
+    this->button_light_left_color = new QPushButton();
+    this->button_light_left_color->setText(this->light_left_color.name(QColor::HexRgb).toUpper());
+    this->update_color_button_style(this->button_light_left_color, this->light_left_color);
+    layout_lighting->addWidget(this->button_light_left_color, light_row, 1);
+    connect(this->button_light_left_color, &QPushButton::released, this, [this]() {
+        ColorPickerDialog dlg(this->light_left_color, this);
+        if(dlg.exec() == QDialog::Accepted) {
+            this->light_left_color = dlg.color();
+            this->button_light_left_color->setText(this->light_left_color.name(QColor::HexRgb).toUpper());
+            this->update_color_button_style(this->button_light_left_color, this->light_left_color);
+        }
+    });
+
+    light_row++;
+    layout_lighting->addWidget(new QLabel("Right light color"), light_row, 0);
+    this->button_light_right_color = new QPushButton();
+    this->button_light_right_color->setText(this->light_right_color.name(QColor::HexRgb).toUpper());
+    this->update_color_button_style(this->button_light_right_color, this->light_right_color);
+    layout_lighting->addWidget(this->button_light_right_color, light_row, 1);
+    connect(this->button_light_right_color, &QPushButton::released, this, [this]() {
+        ColorPickerDialog dlg(this->light_right_color, this);
+        if(dlg.exec() == QDialog::Accepted) {
+            this->light_right_color = dlg.color();
+            this->button_light_right_color->setText(this->light_right_color.name(QColor::HexRgb).toUpper());
+            this->update_color_button_style(this->button_light_right_color, this->light_right_color);
+        }
+    });
+
+    light_row++;
+    layout_lighting->addWidget(new QLabel("Left light intensity"), light_row, 0);
+    this->spinbox_light_left_intensity = new QDoubleSpinBox();
+    this->spinbox_light_left_intensity->setRange(0.0, 100000.0);
+    this->spinbox_light_left_intensity->setDecimals(2);
+    this->spinbox_light_left_intensity->setSingleStep(1.0);
+    this->spinbox_light_left_intensity->setValue(10000.0);
+    layout_lighting->addWidget(this->spinbox_light_left_intensity, light_row, 1);
+
+    light_row++;
+    layout_lighting->addWidget(new QLabel("Right light intensity"), light_row, 0);
+    this->spinbox_light_right_intensity = new QDoubleSpinBox();
+    this->spinbox_light_right_intensity->setRange(0.0, 100000.0);
+    this->spinbox_light_right_intensity->setDecimals(2);
+    this->spinbox_light_right_intensity->setSingleStep(1.0);
+    this->spinbox_light_right_intensity->setValue(10000.0);
+    layout_lighting->addWidget(this->spinbox_light_right_intensity, light_row, 1);
+
+    light_row++;
+    layout_lighting->addWidget(new QLabel("Left light area size"), light_row, 0);
+    this->spinbox_light_left_area_size = new QDoubleSpinBox();
+    this->spinbox_light_left_area_size->setRange(0.01, 10000.0);
+    this->spinbox_light_left_area_size->setDecimals(2);
+    this->spinbox_light_left_area_size->setSingleStep(0.5);
+    this->spinbox_light_left_area_size->setValue(50.0);
+    layout_lighting->addWidget(this->spinbox_light_left_area_size, light_row, 1);
+
+    light_row++;
+    layout_lighting->addWidget(new QLabel("Right light area size"), light_row, 0);
+    this->spinbox_light_right_area_size = new QDoubleSpinBox();
+    this->spinbox_light_right_area_size->setRange(0.01, 10000.0);
+    this->spinbox_light_right_area_size->setDecimals(2);
+    this->spinbox_light_right_area_size->setSingleStep(0.5);
+    this->spinbox_light_right_area_size->setValue(25.0);
+    layout_lighting->addWidget(this->spinbox_light_right_area_size, light_row, 1);
+
+    // --- Custom atom rendering rules ---
+    rownr++;
+    layout_blender_settings->addWidget(new QLabel("Custom atom rendering"), rownr, 0);
+
+    // RenderAtomsWidget
+    rownr++;
+    render_atoms_widget = new RenderAtomsWidget();
+    layout_blender_settings->addWidget(render_atoms_widget, rownr, 0, 1, 3);
+    connect(render_atoms_widget, &RenderAtomsWidget::rulesChanged,
+            this, &MainWindow::slot_sync_atom_render_rules);
 
     QFrame* frame = new QFrame();
     layout->addWidget(frame);
@@ -326,6 +427,16 @@ MainWindow::~MainWindow()
 {
 }
 
+
+void MainWindow::update_color_button_style(QPushButton* button, const QColor& color) const {
+    const double luminance = 0.299 * color.redF() + 0.587 * color.greenF() + 0.114 * color.blueF();
+    const QString textColor = luminance > 0.5 ? "#000000" : "#FFFFFF";
+    button->setStyleSheet(QString("QPushButton { background-color: %1; color: %2; }").arg(color.name(), textColor));
+}
+
+/**
+ * @brief find_blender_executable.
+ */
 QStringList MainWindow::find_blender_executable() {
     QString path = QDir::cleanPath("C:/Program Files/Blender Foundation");
     QDirIterator it(path, {"blender.exe"}, QDir::NoFilter | QDir::Executable | QDir::Files, QDirIterator::Subdirectories);
@@ -341,17 +452,44 @@ QStringList MainWindow::find_blender_executable() {
  * @brief Find files with a specific file name
  */
 QStringList MainWindow::find_files(const QString& path, const QStringList& filenames) {
-    qDebug() << "Finding files with pattern: " << filenames;
+    qDebug() << "Finding files with pattern:" << filenames;
+
     QString p = QDir::cleanPath(path);
-    QDirIterator it(p, filenames, QDir::Files, QDirIterator::Subdirectories);
+    QDirIterator it(
+        p,
+        filenames,
+        QDir::Files | QDir::NoDotAndDotDot,
+        QDirIterator::Subdirectories
+    );
+
     QStringList files;
-    do {
+    while (it.hasNext()) {
         files << it.next();
-    } while(it.hasNext());
+    }
 
     return files;
 }
 
+/**
+ * @brief Find YAML files that match the PyMKMKit schema
+ */
+QStringList MainWindow::find_pymkmkit_yaml_files(const QString& path) {
+    QStringList candidates = find_files(path, {"*.yaml", "*.yml", "*.YAML", "*.YML"});
+    QStringList valid_files;
+
+    StructureLoader sl;
+    for (const auto& file : candidates) {
+        if (sl.is_pymkmkit_yaml(file.toStdString())) {
+            valid_files << file;
+        }
+    }
+
+    return valid_files;
+}
+
+/**
+ * @brief fetch_tooltip_text.
+ */
 QString MainWindow::fetch_tooltip_text(const QString& filename) {
     QFile file(":/assets/tooltips/" + filename + ".txt");
     if(file.open(QIODevice::ReadOnly)) {
@@ -360,6 +498,9 @@ QString MainWindow::fetch_tooltip_text(const QString& filename) {
     return {};
 }
 
+/**
+ * @brief slot_parse_files.
+ */
 void MainWindow::slot_parse_files() {
     // disable all buttons
     this->button_parse_files->setEnabled(false);
@@ -394,13 +535,20 @@ void MainWindow::slot_parse_files() {
     parameters.insert("hide_axes", QVariant(this->checkbox_axes->isChecked()));
     parameters.insert("resolution_x", QVariant(this->spinbox_resolution_x->value()));
     parameters.insert("resolution_y", QVariant(this->spinbox_resolution_y->value()));
-    parameters.insert("tile_x", QVariant(this->spinbox_tile_x->value()));
-    parameters.insert("tile_y", QVariant(this->spinbox_tile_y->value()));
+    parameters.insert("tile_x", QVariant(this->spinbox_resolution_x->value()));
+    parameters.insert("tile_y", QVariant(this->spinbox_resolution_y->value()));
     parameters.insert("samples", QVariant(this->spinbox_samples->value()));
     parameters.insert("nsubdiv", QVariant(this->spinbox_nsubdiv->value()));
     parameters.insert("atmat", QVariant(this->combobox_atom_material->currentText()));
     parameters.insert("bondmat", QVariant(this->combobox_bond_material->currentText()));
-    parameters.insert("custom_json", QVariant(this->plaintext_modding->toPlainText()));
+    parameters.insert("scene_background_color", QVariant(this->background_color.name(QColor::HexRgb)));
+    parameters.insert("light_left_color", QVariant(this->light_left_color.name(QColor::HexRgb)));
+    parameters.insert("light_right_color", QVariant(this->light_right_color.name(QColor::HexRgb)));
+    parameters.insert("light_left_intensity", QVariant(this->spinbox_light_left_intensity->value()));
+    parameters.insert("light_right_intensity", QVariant(this->spinbox_light_right_intensity->value()));
+    parameters.insert("light_left_area_size", QVariant(this->spinbox_light_left_area_size->value()));
+    parameters.insert("light_right_area_size", QVariant(this->spinbox_light_right_area_size->value()));
+    parameters.insert("custom_json", QVariant(QString(QJsonDocument(this->build_custom_json()).toJson(QJsonDocument::Indented))));
 
     // set icon when jobs are in queue
     static const QIcon icon(":/assets/icons/queue.png");
@@ -409,10 +557,14 @@ void MainWindow::slot_parse_files() {
     }
 
     // launch queue
+    process_job_queue->set_render_mode(false);
     process_job_queue->set_parameters(parameters);
     process_job_queue->start();
 }
 
+/**
+ * @brief slot_parse_single_job.
+ */
 void MainWindow::slot_parse_single_job() {
     // disable all buttons
     this->button_parse_files->setEnabled(false);
@@ -429,6 +581,16 @@ void MainWindow::slot_parse_single_job() {
     this->progress_bar->setMaximum(1);
 
     int jobid = this->listview_items->currentRow();
+    if(jobid < 0 || jobid >= this->listview_items->count()) {
+        QMessageBox::warning(this,
+                             tr("No job selected"),
+                             tr("Please select a job from the queue before running a single job."));
+        this->button_parse_files->setEnabled(true);
+        this->button_select_folder->setEnabled(true);
+        this->button_run_single_job->setEnabled(this->listview_items->count() > 0);
+        this->button_cancel->setVisible(false);
+        return;
+    }
     this->process_job_queue->set_single_job_id(jobid);
 
     // connect signals and slots
@@ -447,85 +609,160 @@ void MainWindow::slot_parse_single_job() {
     parameters.insert("hide_axes", QVariant(this->checkbox_axes->isChecked()));
     parameters.insert("resolution_x", QVariant(this->spinbox_resolution_x->value()));
     parameters.insert("resolution_y", QVariant(this->spinbox_resolution_y->value()));
-    parameters.insert("tile_x", QVariant(this->spinbox_tile_x->value()));
-    parameters.insert("tile_y", QVariant(this->spinbox_tile_y->value()));
+    parameters.insert("tile_x", QVariant(this->spinbox_resolution_x->value()));
+    parameters.insert("tile_y", QVariant(this->spinbox_resolution_y->value()));
     parameters.insert("samples", QVariant(this->spinbox_samples->value()));
     parameters.insert("nsubdiv", QVariant(this->spinbox_nsubdiv->value()));
     parameters.insert("atmat", QVariant(this->combobox_atom_material->currentText()));
     parameters.insert("bondmat", QVariant(this->combobox_bond_material->currentText()));
-    parameters.insert("custom_json", QVariant(this->plaintext_modding->toPlainText()));
+    parameters.insert("scene_background_color", QVariant(this->background_color.name(QColor::HexRgb)));
+    parameters.insert("light_left_color", QVariant(this->light_left_color.name(QColor::HexRgb)));
+    parameters.insert("light_right_color", QVariant(this->light_right_color.name(QColor::HexRgb)));
+    parameters.insert("light_left_intensity", QVariant(this->spinbox_light_left_intensity->value()));
+    parameters.insert("light_right_intensity", QVariant(this->spinbox_light_right_intensity->value()));
+    parameters.insert("light_left_area_size", QVariant(this->spinbox_light_left_area_size->value()));
+    parameters.insert("light_right_area_size", QVariant(this->spinbox_light_right_area_size->value()));
+    parameters.insert("custom_json", QVariant(QString(QJsonDocument(this->build_custom_json()).toJson(QJsonDocument::Indented))));
 
     // set icon when jobs are in queue
     static const QIcon icon(":/assets/icons/queue.png");
     this->listview_items->item(jobid)->setIcon(icon);
 
     // launch queue
+    process_job_queue->set_render_mode(this->run_single_save_blend);
     process_job_queue->set_parameters(parameters);
     process_job_queue->start();
+    this->run_single_save_blend = false;
 }
 
-void MainWindow::slot_check_valid_json() {
-    std::string json_string = "{" + this->plaintext_modding->toPlainText().toStdString() + "}";
-    try {
-        json::jobject result = json::jobject::parse(json_string);
-        this->label_valid_json->setText("JSON validation pass");
-        this->label_valid_json->setStyleSheet("QLabel { background-color : green; color : white; }");
-    } catch(const std::exception& e) {
-        this->label_valid_json->setText("Invalid JSON detected");
-        this->label_valid_json->setStyleSheet("QLabel { background-color : red; color : white; }");
+/**
+ * @brief slot_parse_selected_job.
+ */
+void MainWindow::slot_parse_selected_job(int jobid) {
+    if(jobid < 0 || jobid >= this->listview_items->count()) {
+        return;
     }
+
+    this->run_single_save_blend = false;
+    this->listview_items->setCurrentRow(jobid);
+    this->slot_parse_single_job();
 }
 
+/**
+ * @brief slot_save_blend_selected_job.
+ */
+void MainWindow::slot_save_blend_selected_job(int jobid) {
+    if(jobid < 0 || jobid >= this->listview_items->count()) {
+        return;
+    }
+
+    this->run_single_save_blend = true;
+    this->listview_items->setCurrentRow(jobid);
+    this->slot_parse_single_job();
+}
+
+/**
+ * @brief slot_select_folder.
+ */
 void MainWindow::slot_select_folder() {
     qDebug() << "Opening dialog";
-    auto path = QFileDialog::getExistingDirectory(0, ("Select data folder"), QDir::currentPath());
-    if(path.isEmpty()) {
-        return;
-    } else {
-        qDebug() << "Clearing job queue";
-        this->process_job_queue.reset();
-        this->job_status.clear();
-        this->widget_job_info->set_process_job_queue_ptr(nullptr);
 
-        qDebug() << "Clearing list view";
-        this->listview_items->clear();
+    // --- Load last directory or fall back to Documents ---
+    QSettings settings;
+    QString startDir = settings.value("ui/last_data_directory").toString();
+
+    if (startDir.isEmpty() || !QDir(startDir).exists()) {
+        startDir = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
     }
 
+    const QString path = QFileDialog::getExistingDirectory(
+        this,
+        tr("Select data folder"),
+        startDir,
+        QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks
+    );
+
+    if (path.isEmpty()) {
+        return;
+    }
+
+    // --- Persist selected directory ---
+    settings.setValue("ui/last_data_directory", path);
+
+    // --- Reset UI state ---
+    qDebug() << "Clearing job queue";
+    process_job_queue.reset();
+    job_status.clear();
+    widget_job_info->set_process_job_queue_ptr(nullptr);
+
+    qDebug() << "Clearing list view";
+    listview_items->clear();
+
+    // --- Find files ---
     QStringList files;
-    if(this->combobox_file_types->currentText() == this->GEOMETRY_FILETYPES[0]) { // VASP CONTCAR
-        files = this->find_files(path, {"POSCAR*","CONTCAR*"});
-    } else if(this->combobox_file_types->currentText() == this->GEOMETRY_FILETYPES[1]) { // ADF LOGFILES
-        files = this->find_files(path, {"logfile"});
-    } else if(this->combobox_file_types->currentText() == this->GEOMETRY_FILETYPES[2]) { // Gaussian log files
-        files = this->find_files(path, {"*.LOG","*.log"});
+    const QString& type = combobox_file_types->currentText();
+
+    if (type == GEOMETRY_FILETYPES[0]) {              // VASP CONTCAR
+        files = find_files(path, {"POSCAR*", "CONTCAR*"});
+    } else if (type == GEOMETRY_FILETYPES[1]) {       // ADF LOGFILES
+        files = find_files(path, {"logfile"});
+    } else if (type == GEOMETRY_FILETYPES[2]) {       // Gaussian log files
+        files = find_files(path, {"*.LOG", "*.log"});
+    } else if (type == GEOMETRY_FILETYPES[3]) {       // MKS files
+        files = find_files(path, {"*.mks", "*.MKS"});
+    } else if (type == GEOMETRY_FILETYPES[4]) {       // PyMKMKit YAML files
+        files = find_pymkmkit_yaml_files(path);
     } else {
         throw std::runtime_error("Invalid selection. Terminating program.");
     }
 
-    // icon for file to be rendered
-    static const QIcon icon(":/assets/icons/space_invader.png");
+    if (files.isEmpty()) {
+        qDebug() << "No matching files found in" << path;
 
-    int iterator = 0;
-    for(const QString& file : files) {
-        auto item = new QListWidgetItem();
-        item->setIcon(icon);
-        item->setText(file);
-        this->listview_items->insertItem(iterator, item);
-        this->job_status.push_back(JOB_QUEUED);
-        iterator++;
+        QMessageBox::information(
+            this,
+            tr("No files found"),
+            tr("No files matching the selected file type were found in:\n\n%1")
+                .arg(path)
+        );
+
+        button_parse_files->setEnabled(false);
+        button_run_single_job->setEnabled(false);
+        widget_job_info->get_anaglyph_widget()->set_structure_paths({});
+        return;
     }
 
-    this->widget_job_info->get_anaglyph_widget()->set_structure_paths(files);
+    // --- Populate list ---
+    static const QIcon icon(":/assets/icons/space_invader.png");
 
-    this->button_parse_files->setEnabled(true);
+    int i = 0;
+    for (const QString& file : files) {
+        auto* item = new QListWidgetItem(icon, file);
+        listview_items->insertItem(i++, item);
+        job_status.push_back(JOB_QUEUED);
+    }
 
-    // build queue object
-    this->process_job_queue = std::make_unique<ThreadRenderImage>();
-    this->widget_job_info->set_process_job_queue_ptr(this->process_job_queue.get());
+    widget_job_info->get_anaglyph_widget()->set_structure_paths(files);
+
+    if(this->listview_items->count() > 0) {
+        this->listview_items->setCurrentRow(0);
+        this->button_run_single_job->setEnabled(true);
+    } else {
+        this->button_run_single_job->setEnabled(false);
+    }
+
+    button_parse_files->setEnabled(true);
+
+    // --- Build queue object ---
+    process_job_queue = std::make_unique<ThreadRenderImage>();
+    widget_job_info->set_process_job_queue_ptr(process_job_queue.get());
     process_job_queue->set_files(files);
-    process_job_queue->set_executable(this->combobox_blender_executable->currentText());
+    process_job_queue->set_executable(combobox_blender_executable->currentText());
 }
 
+/**
+ * @brief slot_job_start.
+ */
 void MainWindow::slot_job_start(int jobid) {
     this->progress_bar->setValue(jobid+1);
 
@@ -535,6 +772,9 @@ void MainWindow::slot_job_start(int jobid) {
     this->job_status[jobid] = JOB_RUNNING;
 }
 
+/**
+ * @brief slot_job_done.
+ */
 void MainWindow::slot_job_done(int jobid) {
     this->progress_bar->setValue(jobid+1);
 
@@ -549,6 +789,9 @@ void MainWindow::slot_job_done(int jobid) {
     this->widget_job_info->slot_update_job_info(jobid);
 }
 
+/**
+ * @brief slot_queue_done.
+ */
 void MainWindow::slot_queue_done() {
     this->button_parse_files->setEnabled(true);
     this->button_select_folder->setEnabled(true);
@@ -556,52 +799,76 @@ void MainWindow::slot_queue_done() {
     this->button_run_single_job->setEnabled(true);
 }
 
+/**
+ * @brief slot_probe_gpu.
+ */
 void MainWindow::slot_probe_gpu() {
     qDebug() << "Probe GPUs";
-    this->label_gpus->clear();
+    label_gpus->clear();
+
     QTemporaryDir dir;
-    dir.setAutoRemove(false); // do not immediately remove
-    if(dir.isValid()) {
-        // write Blender axes template file
-        QFile blenderfile(":/assets/blender/axes_template.blend");
-        if(!blenderfile.open(QIODevice::ReadOnly)) {
-            throw std::runtime_error("Could not open blender file from assets.");
-        }
-        blenderfile.copy(dir.path() + "/axes_template.blend");
+    dir.setAutoRemove(false);
 
-        // write Python file containing Blender instructions
-        QFile pythonfile(":/assets/blender/probe_cards.py");
-        if(!pythonfile.open(QIODevice::ReadOnly)) {
-            throw std::runtime_error("Could not open Python file from assets.");
-        }
-        pythonfile.copy(dir.path() + "/probe_cards.py");
-
-        QStringList arguments = {"-b", "-P", "probe_cards.py"};
-        QProcess* blender_process = new QProcess();
-        blender_process->setProgram(this->combobox_blender_executable->currentText());
-        blender_process->setArguments(arguments);
-        blender_process->setProcessChannelMode(QProcess::SeparateChannels);
-        blender_process->setWorkingDirectory(dir.path());
-        blender_process->start();
-        if(blender_process->waitForFinished(1 * 60 * 1000)) { // max one minute
-            auto lines = blender_process->readAll().split('\n');
-            for(const QString& line : lines) {
-                if(line.contains("CyclesDeviceSettings") && line.contains("NVIDIA", Qt::CaseInsensitive)) {
-                    QString substr = line.split("CyclesDeviceSettings(\"")[1].split("\") at ")[0];
-                    if(this->label_gpus->text().count()) {
-                        this->label_gpus->setText(this->label_gpus->text() + "\n" + substr);
-                    } else {
-                        this->label_gpus->setText(substr);
-                    }
-                }
-            }
-        }
-
-    } else {
-        throw std::runtime_error("Invalid path");
+    if (!dir.isValid()) {
+        qCritical() << "Invalid temp directory";
+        return;
     }
+
+    const QString blendPath = dir.path() + "/axes_template.blend";
+    const QString pyPath    = dir.path() + "/probe_cards.py";
+
+    // --- Copy blend file ---
+    QFile::remove(blendPath);
+    QFile blenderfile(":/assets/blender/axes_template.blend");
+    if (!blenderfile.open(QIODevice::ReadOnly) || !blenderfile.copy(blendPath)) {
+        qCritical() << "Failed to copy blend file";
+        return;
+    }
+
+    // --- Copy python file ---
+    QFile::remove(pyPath);
+    QFile pythonfile(":/assets/blender/probe_cards.py");
+    if (!pythonfile.open(QIODevice::ReadOnly) || !pythonfile.copy(pyPath)) {
+        qCritical() << "Failed to copy python file";
+        return;
+    }
+
+    QProcess* blender = new QProcess(this);
+    blender->setProgram(combobox_blender_executable->currentText());
+    blender->setArguments({ "-b", blendPath, "-P", pyPath });
+    blender->setWorkingDirectory(dir.path());
+    blender->setProcessChannelMode(QProcess::MergedChannels);
+
+    blender->start();
+
+    if (!blender->waitForStarted()) {
+        qCritical() << "Blender failed to start:" << blender->errorString();
+        return;
+    }
+
+    if (!blender->waitForFinished(60 * 1000)) {
+        qCritical() << "Blender timed out";
+        blender->kill();
+        return;
+    }
+
+    const QString output = blender->readAll();
+    qDebug().noquote() << output;
+
+    // --- Parse GPU names ---
+    QStringList gpus;
+    for (const QString& line : output.split('\n')) {
+        if (line.contains("CUDA") || line.contains("OPTIX") || line.contains("HIP")) {
+            gpus << line.trimmed();
+        }
+    }
+
+    label_gpus->setText(gpus.join("\n"));
 }
 
+/**
+ * @brief slot_change_ortho_scale.
+ */
 void MainWindow::slot_change_ortho_scale(int item_id) {
     if(item_id > 0) {
         this->label_custom_ortho_scale->setVisible(true);
@@ -612,19 +879,252 @@ void MainWindow::slot_change_ortho_scale(int item_id) {
     }
 }
 
-void MainWindow::slot_add_object_angles() {
-    QVector3D camera = this->widget_job_info->get_anaglyph_widget()->get_euler_angles();
-    QTextCursor new_cursor = this->plaintext_modding->textCursor();
-    new_cursor.movePosition(QTextCursor::End);
-    this->plaintext_modding->setTextCursor(new_cursor);
-    this->plaintext_modding->insertPlainText(tr("\n\"object_euler\": \"%1/%2/%3\",").arg(camera[0], 0, 'f', 2).arg(camera[1], 0, 'f', 2).arg(camera[2], 0, 'f', 2));
+/**
+ * @brief slot_update_custom_zoom_level.
+ */
+void MainWindow::slot_update_custom_zoom_level() {
+    if(this->combobox_ortho_scale->currentIndex() == 1) {
+        this->spinbox_custom_ortho_scale->setValue(this->widget_job_info->get_anaglyph_widget()->get_camera_position()[2]);
+    }
 }
 
-void MainWindow::slot_set_zoom_level() {
-    this->combobox_ortho_scale->setCurrentIndex(1);
-    this->spinbox_custom_ortho_scale->setValue(this->widget_job_info->get_anaglyph_widget()->get_camera_position()[2]);
+/**
+ * @brief slot_update_custom_euler.
+ */
+void MainWindow::slot_update_custom_euler() {
+    this->flag_block_custom_euler_sync = true;
+    const QVector3D euler = this->widget_job_info->get_anaglyph_widget()->get_euler_angles();
+    this->spinbox_custom_euler_x->setValue(euler[0]);
+    this->spinbox_custom_euler_y->setValue(euler[1]);
+    this->spinbox_custom_euler_z->setValue(euler[2]);
+    this->flag_block_custom_euler_sync = false;
 }
 
+/**
+ * @brief slot_set_custom_euler.
+ */
+void MainWindow::slot_set_custom_euler() {
+    if(this->flag_block_custom_euler_sync) {
+        return;
+    }
+
+    const int custom_idx = this->combobox_camera_direction->findText("custom");
+    if(custom_idx >= 0) {
+        this->combobox_camera_direction->setCurrentIndex(custom_idx);
+    }
+    this->widget_job_info->get_anaglyph_widget()->set_euler_angles(
+        QVector3D(this->spinbox_custom_euler_x->value(),
+                  this->spinbox_custom_euler_y->value(),
+                  this->spinbox_custom_euler_z->value()));
+}
+
+/**
+ * @brief slot_sync_atom_render_rules.
+ */
+void MainWindow::slot_sync_atom_render_rules() {
+    AtomSettings::get().reset();
+    AtomSettings::get().overwrite(this->render_atoms_widget->generate_json().toStdString());
+
+    auto structure = this->widget_job_info->get_anaglyph_widget()->get_structure();
+    if(structure) {
+        structure->update();
+    }
+
+    this->widget_job_info->get_anaglyph_widget()->update();
+}
+
+/**
+ * @brief build_custom_json.
+ */
+QJsonObject MainWindow::build_custom_json() const {
+    QJsonObject root;
+    const QString custom_json = this->render_atoms_widget->generate_json();
+    if(!custom_json.trimmed().isEmpty()) {
+        QJsonParseError err;
+        const QJsonDocument doc = QJsonDocument::fromJson(custom_json.toUtf8(), &err);
+        if(err.error == QJsonParseError::NoError && doc.isObject()) {
+            root = doc.object();
+        }
+    }
+
+    if(this->combobox_camera_direction->currentText() == "custom") {
+        const QVector3D euler = this->widget_job_info->get_anaglyph_widget()->get_euler_angles();
+        root["object_euler"] = QString("%1/%2/%3")
+            .arg(euler[0], 0, 'f', 6)
+            .arg(euler[1], 0, 'f', 6)
+            .arg(euler[2], 0, 'f', 6);
+    }
+
+    root["scene_background_color"] = this->background_color.name(QColor::HexRgb);
+    root["light_left_color"] = this->light_left_color.name(QColor::HexRgb);
+    root["light_right_color"] = this->light_right_color.name(QColor::HexRgb);
+    root["light_left_intensity"] = this->spinbox_light_left_intensity->value();
+    root["light_right_intensity"] = this->spinbox_light_right_intensity->value();
+    root["light_left_area_size"] = this->spinbox_light_left_area_size->value();
+    root["light_right_area_size"] = this->spinbox_light_right_area_size->value();
+
+    return root;
+}
+
+
+void MainWindow::slot_save_render_settings() {
+    const QString filename = QFileDialog::getSaveFileName(this, tr("Save render settings"), QString(), tr("JSON (*.json)"));
+    if(filename.isEmpty()) {
+        return;
+    }
+
+    const QJsonObject root = this->collect_render_settings_json();
+    QFile file(filename);
+    if(!file.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text)) {
+        QMessageBox::critical(this, tr("Write failed"), tr("Could not write file:\n%1").arg(filename));
+        return;
+    }
+
+    file.write(QJsonDocument(root).toJson(QJsonDocument::Indented));
+    file.close();
+}
+
+void MainWindow::slot_load_render_settings() {
+    const QString filename = QFileDialog::getOpenFileName(this, tr("Load render settings"), QString(), tr("JSON (*.json)"));
+    if(filename.isEmpty()) {
+        return;
+    }
+
+    QFile file(filename);
+    if(!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        QMessageBox::critical(this, tr("Read failed"), tr("Could not read file:\n%1").arg(filename));
+        return;
+    }
+
+    const QByteArray raw = file.readAll();
+    file.close();
+
+    QJsonParseError err;
+    const QJsonDocument doc = QJsonDocument::fromJson(raw, &err);
+    if(err.error != QJsonParseError::NoError || !doc.isObject()) {
+        QMessageBox::critical(this, tr("Invalid file"), tr("Invalid JSON file:\n%1").arg(err.errorString()));
+        return;
+    }
+
+    const QJsonObject root = doc.object();
+    if(root["program"].toString() != PROGRAM_NAME || root["version"].toString().isEmpty() || !root["render_settings"].isObject()) {
+        QMessageBox::critical(this, tr("Invalid file"), tr("This file is not a valid %1 render settings file.").arg(PROGRAM_NAME));
+        return;
+    }
+
+    this->apply_render_settings_json(root["render_settings"].toObject());
+}
+
+QJsonObject MainWindow::collect_render_settings_json() const {
+    QJsonObject settings;
+    settings["ortho_scale"] = this->combobox_ortho_scale->currentText();
+    settings["ortho_custom_scale"] = this->spinbox_custom_ortho_scale->value();
+    settings["camera_direction"] = this->combobox_camera_direction->currentText();
+    settings["custom_euler_x"] = this->spinbox_custom_euler_x->value();
+    settings["custom_euler_y"] = this->spinbox_custom_euler_y->value();
+    settings["custom_euler_z"] = this->spinbox_custom_euler_z->value();
+    settings["show_unitcell"] = this->checkbox_unitcell->isChecked();
+    settings["expansion"] = this->checkbox_expansion->isChecked();
+    settings["hide_axes"] = this->checkbox_axes->isChecked();
+    settings["resolution_x"] = this->spinbox_resolution_x->value();
+    settings["resolution_y"] = this->spinbox_resolution_y->value();
+    settings["samples"] = this->spinbox_samples->value();
+    settings["nsubdiv"] = this->spinbox_nsubdiv->value();
+    settings["atom_material"] = this->combobox_atom_material->currentText();
+    settings["bond_material"] = this->combobox_bond_material->currentText();
+    settings["scene_background_color"] = this->background_color.name(QColor::HexRgb);
+    settings["light_left_color"] = this->light_left_color.name(QColor::HexRgb);
+    settings["light_right_color"] = this->light_right_color.name(QColor::HexRgb);
+    settings["light_left_intensity"] = this->spinbox_light_left_intensity->value();
+    settings["light_right_intensity"] = this->spinbox_light_right_intensity->value();
+    settings["light_left_area_size"] = this->spinbox_light_left_area_size->value();
+    settings["light_right_area_size"] = this->spinbox_light_right_area_size->value();
+    settings["custom_rules"] = this->build_custom_json();
+
+    QJsonObject root;
+    root["program"] = PROGRAM_NAME;
+    root["version"] = PROGRAM_VERSION;
+    root["render_settings"] = settings;
+    return root;
+}
+
+void MainWindow::apply_render_settings_json(const QJsonObject& settings) {
+    const int orthoIndex = this->combobox_ortho_scale->findText(settings["ortho_scale"].toString());
+    if(orthoIndex >= 0) this->combobox_ortho_scale->setCurrentIndex(orthoIndex);
+    this->spinbox_custom_ortho_scale->setValue(settings["ortho_custom_scale"].toDouble(this->spinbox_custom_ortho_scale->value()));
+
+    const int cameraIndex = this->combobox_camera_direction->findText(settings["camera_direction"].toString());
+    if(cameraIndex >= 0) this->combobox_camera_direction->setCurrentIndex(cameraIndex);
+
+    this->flag_block_custom_euler_sync = true;
+    this->spinbox_custom_euler_x->setValue(settings["custom_euler_x"].toDouble(this->spinbox_custom_euler_x->value()));
+    this->spinbox_custom_euler_y->setValue(settings["custom_euler_y"].toDouble(this->spinbox_custom_euler_y->value()));
+    this->spinbox_custom_euler_z->setValue(settings["custom_euler_z"].toDouble(this->spinbox_custom_euler_z->value()));
+    this->flag_block_custom_euler_sync = false;
+
+    this->checkbox_unitcell->setChecked(settings["show_unitcell"].toBool(this->checkbox_unitcell->isChecked()));
+    this->checkbox_expansion->setChecked(settings["expansion"].toBool(this->checkbox_expansion->isChecked()));
+    this->checkbox_axes->setChecked(settings["hide_axes"].toBool(this->checkbox_axes->isChecked()));
+
+    this->spinbox_resolution_x->setValue(settings["resolution_x"].toInt(this->spinbox_resolution_x->value()));
+    this->spinbox_resolution_y->setValue(settings["resolution_y"].toInt(this->spinbox_resolution_y->value()));
+    this->spinbox_samples->setValue(settings["samples"].toInt(this->spinbox_samples->value()));
+    this->spinbox_nsubdiv->setValue(settings["nsubdiv"].toInt(this->spinbox_nsubdiv->value()));
+
+    const int atomMatIndex = this->combobox_atom_material->findText(settings["atom_material"].toString());
+    if(atomMatIndex >= 0) this->combobox_atom_material->setCurrentIndex(atomMatIndex);
+    const int bondMatIndex = this->combobox_bond_material->findText(settings["bond_material"].toString());
+    if(bondMatIndex >= 0) this->combobox_bond_material->setCurrentIndex(bondMatIndex);
+
+    const QColor loadedBackground(settings["scene_background_color"].toString(this->background_color.name(QColor::HexRgb)));
+    if(loadedBackground.isValid()) {
+        this->background_color = loadedBackground;
+        this->button_background_color->setText(this->background_color.name(QColor::HexRgb).toUpper());
+        this->update_color_button_style(this->button_background_color, this->background_color);
+    }
+
+    const QColor loadedLeftLight(settings["light_left_color"].toString(settings["light_color"].toString(this->light_left_color.name(QColor::HexRgb))));
+    if(loadedLeftLight.isValid()) {
+        this->light_left_color = loadedLeftLight;
+        this->button_light_left_color->setText(this->light_left_color.name(QColor::HexRgb).toUpper());
+        this->update_color_button_style(this->button_light_left_color, this->light_left_color);
+    }
+    const QColor loadedRightLight(settings["light_right_color"].toString(settings["light_color"].toString(this->light_right_color.name(QColor::HexRgb))));
+    if(loadedRightLight.isValid()) {
+        this->light_right_color = loadedRightLight;
+        this->button_light_right_color->setText(this->light_right_color.name(QColor::HexRgb).toUpper());
+        this->update_color_button_style(this->button_light_right_color, this->light_right_color);
+    }
+
+    const QJsonValue leftIntensity = settings.contains("light_left_intensity")
+        ? settings["light_left_intensity"]
+        : settings.contains("relative_light_intensity")
+            ? settings["relative_light_intensity"]
+            : settings["light_intensity"];
+    const QJsonValue rightIntensity = settings.contains("light_right_intensity")
+        ? settings["light_right_intensity"]
+        : settings.contains("relative_light_intensity")
+            ? settings["relative_light_intensity"]
+            : settings["light_intensity"];
+    this->spinbox_light_left_intensity->setValue(leftIntensity.toDouble(this->spinbox_light_left_intensity->value()));
+    this->spinbox_light_right_intensity->setValue(rightIntensity.toDouble(this->spinbox_light_right_intensity->value()));
+    this->spinbox_light_left_area_size->setValue(settings["light_left_area_size"].toDouble(settings["light_area_size"].toDouble(this->spinbox_light_left_area_size->value())));
+    this->spinbox_light_right_area_size->setValue(settings["light_right_area_size"].toDouble(settings["light_area_size"].toDouble(this->spinbox_light_right_area_size->value())));
+
+    if(settings["custom_rules"].isObject()) {
+        this->render_atoms_widget->load_from_json(settings["custom_rules"].toObject());
+    }
+
+    if(this->combobox_camera_direction->currentText() == "custom") {
+        this->slot_set_custom_euler();
+    }
+
+    this->slot_sync_atom_render_rules();
+}
+
+/**
+ * @brief slot_cancel_queue.
+ */
 void MainWindow::slot_cancel_queue() {
     if(this->process_job_queue && this->process_job_queue.get()->isRunning()) {
         qDebug() << "Requesting interruption of queue, wait until current job is finished...";
@@ -633,6 +1133,9 @@ void MainWindow::slot_cancel_queue() {
     }
 }
 
+/**
+ * @brief slot_queue_cancelled.
+ */
 void MainWindow::slot_queue_cancelled() {
     qDebug() << "Job cancellation received, updating status.";
     this->button_parse_files->setEnabled(true);
@@ -652,14 +1155,23 @@ void MainWindow::slot_queue_cancelled() {
     }
 }
 
+/**
+ * @brief slot_exit.
+ */
 void MainWindow::slot_exit() {
     QApplication::quit();
 }
 
+/**
+ * @brief slot_debug_log.
+ */
 void MainWindow::slot_debug_log() {
     this->log_window->show();
 }
 
+/**
+ * @brief slot_about.
+ */
 void MainWindow::slot_about() {
     QMessageBox message_box;
         //message_box.setStyleSheet("QLabel{min-width: 250px; font-weight: normal;}");
@@ -673,12 +1185,4 @@ void MainWindow::slot_about() {
         message_box.setWindowTitle("About " + tr(PROGRAM_NAME));
         message_box.setWindowIcon(QIcon(QString(":/assets/icons/%1.ico").arg(PROGRAM_NAME_LC)));
         message_box.exec();
-}
-
-void MainWindow::slot_rebuild_structures() {
-    // overwrite AtomSettings object
-    AtomSettings::get().overwrite(this->plaintext_modding->toPlainText().toStdString());
-
-    // instruct jobinfowidget to rebuild structures
-    this->widget_job_info->rebuild_structures();
 }

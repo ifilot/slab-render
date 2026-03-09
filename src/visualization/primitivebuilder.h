@@ -1,5 +1,9 @@
-#ifndef PRIMITIVEBUILDER_H
-#define PRIMITIVEBUILDER_H
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// SlabRender
+// Author: Ivo Filot <ivo@ivofilot.nl>
+
+
+#pragma once
 
 #include <QOpenGLFunctions>
 #include <QOpenGLVertexArrayObject>
@@ -43,10 +47,19 @@ private:
     MatrixUnitcell unitcell;
 
 public:
+   /**
+    * @brief PrimitiveBuilder.
+    */
     PrimitiveBuilder();
 
+    /**
+     * @brief build_models.
+     */
     void build_models();
 
+    /**
+     * @brief set_unitcell.
+     */
     inline void set_unitcell(const MatrixUnitcell& _unitcell) {
         this->unitcell = _unitcell;
         if(QOpenGLContext::currentContext()->isValid()) {
@@ -56,22 +69,37 @@ public:
 
     // getters
 
+    /**
+     * @brief get_vao_sphere.
+     */
     inline QOpenGLVertexArrayObject* get_vao_sphere() {
         return &this->vao_sphere;
     }
 
+    /**
+     * @brief get_vao_cylinder.
+     */
     inline QOpenGLVertexArrayObject* get_vao_cylinder() {
         return &this->vao_cylinder;
     }
 
+    /**
+     * @brief get_vao_unitcell.
+     */
     inline QOpenGLVertexArrayObject* get_vao_unitcell() {
         return &this->vao_unitcell;
     }
 
+    /**
+     * @brief get_num_vertices_sphere.
+     */
     inline size_t get_num_vertices_sphere() const {
         return this->sphere_indices.size();
     }
 
+    /**
+     * @brief get_num_vertices_cylinder.
+     */
     inline size_t get_num_vertices_cylinder() const {
         return this->cylinder_indices.size();
     }
@@ -97,5 +125,3 @@ public:
     void generate_coordinates_unitcell(const MatrixUnitcell& unitcell);
 
 };
-
-#endif // PRIMITIVEBUILDER_H

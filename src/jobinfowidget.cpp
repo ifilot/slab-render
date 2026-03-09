@@ -1,5 +1,13 @@
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// SlabRender
+// Author: Ivo Filot <ivo@ivofilot.nl>
+
+
 #include "jobinfowidget.h"
 
+/**
+ * @brief JobInfoWidget.
+ */
 JobInfoWidget::JobInfoWidget(QWidget *parent) : QTabWidget(parent) {
     // create info tab
     QWidget* widget_info_container = new QWidget();
@@ -23,10 +31,20 @@ JobInfoWidget::JobInfoWidget(QWidget *parent) : QTabWidget(parent) {
     layout_button_container->addWidget(this->button_save_image);
     this->button_save_image->setEnabled(false);
     connect(this->button_save_image, SIGNAL(released()), this, SLOT(slot_save_image()));
+    this->button_render_single_file = new QPushButton("Render this file");
+    layout_button_container->addWidget(this->button_render_single_file);
+    this->button_render_single_file->setEnabled(false);
+    connect(this->button_render_single_file, SIGNAL(released()), this, SLOT(slot_render_single_file()));
+
+    this->button_save_blend_file = new QPushButton("Save to .blend");
+    layout_button_container->addWidget(this->button_save_blend_file);
+    this->button_save_blend_file->setEnabled(false);
+    connect(this->button_save_blend_file, SIGNAL(released()), this, SLOT(slot_save_blend_single_file()));
 
     this->label_image = new QLabel();
     this->label_image->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
     this->label_image->setAlignment (Qt::AlignCenter);
+    this->label_image->setWordWrap(true);
     layout->addWidget(this->label_image);
 
     layout->addWidget(new QLabel("Rendering log"));
@@ -44,30 +62,10 @@ JobInfoWidget::JobInfoWidget(QWidget *parent) : QTabWidget(parent) {
     this->insertTab(1, anaglyph_container, "Structure");
     anaglyph_container->layout()->addWidget(this->anaglyph_widget);
 
-    QWidget* container_angle = new QWidget();
-    QHBoxLayout* layout_angle = new QHBoxLayout();
-    container_angle->setLayout(layout_angle);
-    anaglyph_container->layout()->addWidget(container_angle);
-    this->label_camera_euler = new QLabel("Object Euler angles");
-    layout_angle->addWidget(this->label_camera_euler);
-    this->button_insert_angle_json = new QPushButton("<< Insert unitcell orientation");
-    layout_angle->addWidget(this->button_insert_angle_json);
-
-    container_angle = new QWidget();
-    QHBoxLayout* layout_zoom = new QHBoxLayout();
-    container_angle->setLayout(layout_zoom);
-    anaglyph_container->layout()->addWidget(container_angle);
-    this->label_zoom_level = new QLabel("Zoom level");
-    layout_zoom->addWidget(this->label_zoom_level);
-    this->button_insert_zoom_level = new QPushButton("<< Insert zoom level");
-    layout_zoom->addWidget(this->button_insert_zoom_level);
-
     this->label_selected_atom = new QLabel("Atom selection");
     anaglyph_container->layout()->addWidget(this->label_selected_atom);
 
     connect(this->anaglyph_widget, SIGNAL(signal_atom_selected(int)), this, SLOT(slot_update_atom_label(int)));
-    connect(this->anaglyph_widget, SIGNAL(signal_object_angles()), this, SLOT(slot_update_camera()));
-    connect(this->anaglyph_widget, SIGNAL(signal_zoom_level()), this, SLOT(slot_update_zoom_level()));
 }
 
 /**
@@ -79,16 +77,22 @@ void JobInfoWidget::rebuild_structures() {
     this->anaglyph_widget->update();
 }
 
+/**
+ * @brief slot_update_job_info.
+ */
 void JobInfoWidget::slot_update_job_info(int job_id) {
     qDebug() << "Updating job info for job id: " << job_id;
+    this->current_job_id = job_id;
     if(this->process_job_queue != nullptr) {
         this->text_job_info->clear();
         this->text_job_info->appendPlainText(this->process_job_queue->get_output(job_id).join('\n'));
         QString contcarpath = this->process_job_queue->get_file(job_id);
         this->label_job_path->setText(contcarpath);
         this->button_open_path->setEnabled(true);
+        this->button_render_single_file->setEnabled(true);
+        this->button_save_blend_file->setEnabled(true);
 
-        QString imagepath = QFileInfo(contcarpath).absoluteDir().path() + "/image.png";
+        QString imagepath = this->get_expected_image_path(contcarpath);
         QFile imagefile(imagepath);
         if(imagefile.exists()) {
             QPixmap pixmap(imagepath);
@@ -96,29 +100,41 @@ void JobInfoWidget::slot_update_job_info(int job_id) {
             this->label_image->setStyleSheet("border: 1px solid black;");
             this->button_save_image->setEnabled(true);
         } else {
-            this->label_image->clear();
+            this->label_image->setPixmap(QPixmap());
+            this->label_image->setText("No rendered image was found for this job. Please start rendering to generate it.");
             this->label_image->setStyleSheet("");
             this->button_save_image->setEnabled(false);
         }
     } else {
         this->button_open_path->setEnabled(false);
+        this->button_render_single_file->setEnabled(false);
+        this->button_save_blend_file->setEnabled(false);
     }
 }
 
+QString JobInfoWidget::get_expected_image_path(const QString& filepath) const {
+    QFileInfo file_info(filepath);
+    const QString suffix = file_info.suffix();
+    if(suffix.compare("yaml", Qt::CaseInsensitive) == 0 ||
+       suffix.compare("yml", Qt::CaseInsensitive) == 0 ||
+       suffix.compare("mks", Qt::CaseInsensitive) == 0) {
+        return file_info.absoluteDir().filePath(file_info.completeBaseName() + ".png");
+    }
+
+    return file_info.absoluteDir().filePath("image.png");
+}
+
+/**
+ * @brief slot_update_atom_label.
+ */
 void JobInfoWidget::slot_update_atom_label(int atom_id) {
     const Atom& atom = this->anaglyph_widget->get_structure()->get_atom(atom_id);
     this->label_selected_atom->setText(tr("Selected atom: %1 (#%2)").arg(AtomSettings::get().get_name_from_elnr(atom.atnr).c_str()).arg(atom_id+1));
 }
 
-void JobInfoWidget::slot_update_camera() {
-    QVector3D camera = this->anaglyph_widget->get_euler_angles();
-    this->label_camera_euler->setText(tr("X=%1° Y=%2° Z=%3°").arg(camera[0], 0, 'f', 2).arg(camera[1], 0, 'f', 2).arg(camera[2], 0, 'f', 2));
-}
-
-void JobInfoWidget::slot_update_zoom_level() {
-    this->label_zoom_level->setText(tr("Orthographic scale: %1").arg(this->anaglyph_widget->get_camera_position()[2]));
-}
-
+/**
+ * @brief slot_show_path_in_explorer_window.
+ */
 void JobInfoWidget::slot_show_path_in_explorer_window() {
     QString path = this->label_job_path->text();
     QFile file(path);
@@ -128,8 +144,11 @@ void JobInfoWidget::slot_show_path_in_explorer_window() {
     }
 }
 
+/**
+ * @brief slot_save_image.
+ */
 void JobInfoWidget::slot_save_image() {
-    QString imagepath = QFileInfo(this->label_job_path->text()).absoluteDir().path() + "/image.png";
+    QString imagepath = this->get_expected_image_path(this->label_job_path->text());
     QFile imagefile(imagepath);
     if(imagefile.exists()) {
         QString filename = QFileDialog::getSaveFileName(this, tr("Save File"),
@@ -138,5 +157,23 @@ void JobInfoWidget::slot_save_image() {
         if(!filename.isEmpty()) {
             imagefile.copy(filename);
         }
+    }
+}
+
+/**
+ * @brief slot_render_single_file.
+ */
+void JobInfoWidget::slot_render_single_file() {
+    if(this->current_job_id >= 0) {
+        emit signal_render_single_job_requested(this->current_job_id);
+    }
+}
+
+/**
+ * @brief slot_save_blend_single_file.
+ */
+void JobInfoWidget::slot_save_blend_single_file() {
+    if(this->current_job_id >= 0) {
+        emit signal_save_blend_single_job_requested(this->current_job_id);
     }
 }

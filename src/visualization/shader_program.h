@@ -1,25 +1,9 @@
-/****************************************************************************
- *                                                                          *
- *   Rubriks Cube                                                           *
- *   Copyright (C) 2022 Ivo Filot <ivo@ivofilot.nl>                         *
- *                                                                          *
- *   This program is free software: you can redistribute it and/or modify   *
- *   it under the terms of the GNU Lesser General Public License as         *
- *   published by the Free Software Foundation, either version 3 of the     *
- *   License, or (at your option) any later version.                        *
- *                                                                          *
- *   This program is distributed in the hope that it will be useful,        *
- *   but WITHOUT ANY WARRANTY; without even the implied warranty of         *
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the          *
- *   GNU General Public License for more details.                           *
- *                                                                          *
- *   You should have received a copy of the GNU General Public license      *
- *   along with this program.  If not, see <https://www.gnu.org/licenses/>. *
- *                                                                          *
- ****************************************************************************/
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// SlabRender
+// Author: Ivo Filot <ivo@ivofilot.nl>
 
-#ifndef _SHADER_PROGRAM_H
-#define _SHADER_PROGRAM_H
+
+#pragma once
 
 #include <stdexcept>
 #include <string>
@@ -41,36 +25,61 @@ private:
 
     std::unordered_map<std::string, int> uniforms;
 
+    /**
+     * @brief add_attributes.
+     */
     void add_attributes();
+    /**
+     * @brief add_uniforms.
+     */
     void add_uniforms();
 
 public:
+   /**
+    * @brief ShaderProgram.
+    */
     ShaderProgram(const std::string& _name, const ShaderProgramType type, const QString& vertex_filename, const QString& fragment_filename);
 
     template <typename T>
+    /**
+     * @brief set_uniform.
+     */
     void set_uniform(const std::string &name, T const &value) {
         auto got = this->uniforms.find(name);
 
         if (got == this->uniforms.end()) {
+            /**
+             * @brief logic_error.
+             */
             throw std::logic_error("Invalid uniform name: " + name);
         }
 
         this->m_program->setUniformValue(got->second, value);
     }
 
+    /**
+     * @brief bind.
+     */
     inline bool bind() {
         return this->m_program->bind();
     }
 
+    /**
+     * @brief release.
+     */
     inline void release() {
         this->m_program->release();
     }
 
+    /**
+     * @brief get_type.
+     */
     inline ShaderProgramType get_type() {
         return this->type;
     }
 
+    /**
+     * @brief ShaderProgram.
+     */
     ~ShaderProgram();
 };
-
-#endif // _SHADER_PROGRAM_H

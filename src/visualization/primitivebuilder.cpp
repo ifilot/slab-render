@@ -1,10 +1,21 @@
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// SlabRender
+// Author: Ivo Filot <ivo@ivofilot.nl>
+
+
 #include "primitivebuilder.h"
 
+/**
+ * @brief PrimitiveBuilder.
+ */
 PrimitiveBuilder::PrimitiveBuilder() {
     this->unitcell = MatrixUnitcell(3,3);
     this->unitcell.diagonal() << 1,1,1;
 }
 
+/**
+ * @brief build_models.
+ */
 void PrimitiveBuilder::build_models() {
     qDebug() << "Loading primitives";
     this->generate_sphere_coordinates(3);

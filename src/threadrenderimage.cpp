@@ -1,28 +1,25 @@
-/********************************************************************************
- * This file is part of Saucepan                                                *
- *                                                                              *
- * Author: Ivo Filot <i.a.w.filot@tue.nl>                                       *
- *                                                                              *
- * This program is free software; you can redistribute it and/or                *
- * modify it under the terms of the GNU Lesser General Public                   *
- * License as published by the Free Software Foundation; either                 *
- * version 3 of the License, or (at your option) any later version.             *
- *                                                                              *
- * This program is distributed in the hope that it will be useful,              *
- * but WITHOUT ANY WARRANTY; without even the implied warranty of               *
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU            *
- * Lesser General Public License for more details.                              *
- *                                                                              *
- * You should have received a copy of the GNU Lesser General Public License     *
- * along with this program; if not, write to the Free Software Foundation,      *
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.          *
- ********************************************************************************/
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// SlabRender
+// Author: Ivo Filot <ivo@ivofilot.nl>
+
 #include "threadrenderimage.h"
 
+#include <QJsonObject>
+#include <QJsonDocument>
+#include <QJsonParseError>
+#include <QFile>
+#include <QFileInfo>
+
+/**
+ * @brief ThreadRenderImage.
+ */
 ThreadRenderImage::ThreadRenderImage() {
 
 }
 
+/**
+ * @brief run.
+ */
 void ThreadRenderImage::run() {
     qDebug() << "Running Blender for " << this->files.count() << " structures.";
     for(int i=0; i<this->files.count(); i++) {
@@ -69,16 +66,41 @@ void ThreadRenderImage::run() {
                 // store output of job
                 this->output[i] = result;
 
-                // copy image back
-                QFile imagefile(process->workingDirectory() + "/image.png");
-                if(imagefile.open(QIODevice::ReadOnly)) {
-                    QString storepath = QFileInfo(file).absoluteDir().path() + "/image.png";
+                QFileInfo source_info(file);
+                if(this->render_mode == RenderMode::SaveBlend) {
+                    QFile blendfile(process->workingDirectory() + "/saved.blend");
+                    if(blendfile.open(QIODevice::ReadOnly)) {
+                        QString output_name = "scene.blend";
+                        if(source_info.suffix().compare("yaml", Qt::CaseInsensitive) == 0 ||
+                           source_info.suffix().compare("yml", Qt::CaseInsensitive) == 0 ||
+                           source_info.suffix().compare("mks", Qt::CaseInsensitive) == 0) {
+                            output_name = source_info.completeBaseName() + ".blend";
+                        }
+                        QString storepath = source_info.absoluteDir().filePath(output_name);
 
-                    // remove existing file if it exists
-                    if(QFile::exists(storepath)) {
-                        QFile::remove(storepath);
+                        if(QFile::exists(storepath)) {
+                            QFile::remove(storepath);
+                        }
+                        blendfile.copy(storepath);
                     }
-                    imagefile.copy(storepath);
+                } else {
+                    // copy image back
+                    QFile imagefile(process->workingDirectory() + "/image.png");
+                    if(imagefile.open(QIODevice::ReadOnly)) {
+                        QString output_name = "image.png";
+                        if(source_info.suffix().compare("yaml", Qt::CaseInsensitive) == 0 ||
+                           source_info.suffix().compare("yml", Qt::CaseInsensitive) == 0 ||
+                           source_info.suffix().compare("mks", Qt::CaseInsensitive) == 0) {
+                            output_name = source_info.completeBaseName() + ".png";
+                        }
+                        QString storepath = source_info.absoluteDir().filePath(output_name);
+
+                        // remove existing file if it exists
+                        if(QFile::exists(storepath)) {
+                            QFile::remove(storepath);
+                        }
+                        imagefile.copy(storepath);
+                    }
                 }
 
                 // emit job done
@@ -103,9 +125,13 @@ void ThreadRenderImage::run() {
     emit(signal_queue_done());
 }
 
+/**
+ * @brief build_process.
+ */
 QProcess* ThreadRenderImage::build_process(const QString& contcarfile) {
     QString cwd = this->copy_template_files(contcarfile);
-    QStringList arguments = {"-b", "axes_template.blend", "-P", "render_image.py", "--", "manifest.json", "atompack.bin", cwd + "/image.png"};
+    const QString output_file = this->render_mode == RenderMode::SaveBlend ? (cwd + "/saved.blend") : (cwd + "/image.png");
+    QStringList arguments = {"-b", "axes_template.blend", "-P", "render_image.py", "--", "manifest.json", "atompack.bin", output_file, this->render_mode == RenderMode::SaveBlend ? "save_blend" : "render_image"};
     QProcess* blender_process = new QProcess();
     blender_process->setProgram(this->executable);
     blender_process->setArguments(arguments);
@@ -115,6 +141,9 @@ QProcess* ThreadRenderImage::build_process(const QString& contcarfile) {
     return blender_process;
 }
 
+/**
+ * @brief copy_template_files.
+ */
 QString ThreadRenderImage::copy_template_files(const QString& contcarfile) {
     QTemporaryDir dir;
     dir.setAutoRemove(false); // do not immediately remove
@@ -156,8 +185,11 @@ QString ThreadRenderImage::copy_template_files(const QString& contcarfile) {
     return QDir::cleanPath(dir.path());
 }
 
+/**
+ * @brief create_atompack.
+ */
 void ThreadRenderImage::create_atompack(const QString& path) {
-    qDebug() << "Converting CONTCAR to atompack.bin for " << path;
+    qDebug() << "Converting structure file to atompack.bin for " << path;
     try {
         auto structure = sl.load_file(path).back();
         structure->update();
@@ -180,6 +212,7 @@ void ThreadRenderImage::create_atompack(const QString& path) {
 
         // write atoms
         uint32_t nr_atoms = structure->get_nr_atoms();
+        this->principal_nr_atoms = nr_atoms;
         out.write((char*)&nr_atoms, sizeof(uint32_t));
         for(const auto& atom : structure->get_atoms()) {
             const uint8_t atnr = atom.atnr;
@@ -236,46 +269,57 @@ void ThreadRenderImage::create_atompack(const QString& path) {
     }
 }
 
-void ThreadRenderImage::build_manifest_file(const QString& path) {
-    QFile outfile(path);
-    if(outfile.open(QIODevice::WriteOnly | QIODevice::Text)) {
-        QTextStream stream(&outfile);
+void ThreadRenderImage::build_manifest_file(const QString& path)
+{
+    // root MUST be declared at function scope
+    QJsonObject root;
 
-        stream << "{" << "\n";
+    // --- regular parameters ---
+    if (this->parameters["ortho_scale"].toString() == "auto") {
+        root["ortho_scale"] = this->parameters["ortho_scale"].toString();
+    } else {
+        root["ortho_scale"] = this->parameters["ortho_custom_scale"].toString();
+    }
 
-        QStringList string_parameters = {"bondmat", "atmat", "camera_direction"};
-        QStringList bool_parameters = {"expansion", "hide_axes", "show_unitcell"};
-        QStringList int_parameters = {"resolution_x", "resolution_y", "tile_x", "tile_y", "samples", "nsubdiv"};
+    root["bondmat"]          = this->parameters["bondmat"].toString();
+    root["atmat"]            = this->parameters["atmat"].toString();
+    root["camera_direction"] = this->parameters["camera_direction"].toString();
 
-        try {
-            // whether to have regular ortho scale or custom
-            if(this->parameters["ortho_scale"] == "auto") {
-                stream << "\"" << "ortho_scale" << "\": " << "\"" << this->parameters["ortho_scale"].toString() << "\"" << ",\n";
-            } else {
-                stream << "\"" << "ortho_scale" << "\": " << "\"" << this->parameters["ortho_custom_scale"].toString() << "\"" << ",\n";
+    root["expansion"]     = this->parameters["expansion"].toBool();
+    root["hide_axes"]     = this->parameters["hide_axes"].toBool();
+    root["show_unitcell"] = this->parameters["show_unitcell"].toBool();
+
+    root["resolution_x"] = this->parameters["resolution_x"].toInt();
+    root["resolution_y"] = this->parameters["resolution_y"].toInt();
+    root["tile_x"]       = this->parameters["tile_x"].toInt();
+    root["tile_y"]       = this->parameters["tile_y"].toInt();
+    root["samples"]      = this->parameters["samples"].toInt();
+    root["nsubdiv"]      = this->parameters["nsubdiv"].toInt();
+    root["principal_nr_atoms"] = static_cast<int>(this->principal_nr_atoms);
+
+    // --- merge custom JSON safely ---
+    const QString custom = this->parameters["custom_json"].toString().trimmed();
+    if (!custom.isEmpty()) {
+        QJsonParseError err;
+        QJsonDocument doc = QJsonDocument::fromJson(custom.toUtf8(), &err);
+
+        if (err.error == QJsonParseError::NoError && doc.isObject()) {
+            const QJsonObject customObj = doc.object();
+            for (auto it = customObj.begin(); it != customObj.end(); ++it) {
+                root[it.key()] = it.value();   // <-- root is in scope here
             }
-
-            for(const QString& str : string_parameters) {
-                stream << "\"" << str << "\": " << "\"" << this->parameters[str].toString() << "\"" << ",\n";
-            }
-
-            for(const QString& str : bool_parameters) {
-                stream << "\"" << str << "\": " << tr(this->parameters[str].toBool() ? "true" : "false") << ",\n";
-            }
-
-            for(const QString& str : int_parameters) {
-                stream << "\"" << str << "\": " << this->parameters[str].toInt() << ",\n";
-            }
-        }  catch (const std::exception& e) {
-            qCritical() << tr("Error encountered in parsing parameters: ") + tr(e.what());
+        } else {
+            qCritical() << "Invalid custom JSON:" << err.errorString();
         }
+    }
 
-        stream << this->parameters["custom_json"].toString() << "\n";
+    root["generator"] = "SlabRender";
 
-        stream << "\"generator\": \"SlabRender\"\n";
-
-        stream << "}" << "\n";
-
-        outfile.close();
+    // --- write file ---
+    QJsonDocument finalDoc(root);
+    QFile f(path);
+    if (f.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text)) {
+        f.write(finalDoc.toJson(QJsonDocument::Indented));
+        f.close();
     }
 }

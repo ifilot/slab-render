@@ -1,33 +1,62 @@
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// SlabRender
+// Author: Ivo Filot <ivo@ivofilot.nl>
+
 #version 330 core
 
-in vec3 position;
-in vec3 normal;
+// Vertex attributes (model space)
+in vec3 position;   // vertex position in model space
+in vec3 normal;     // vertex normal in model space
 
-out vec3 normal_worldspace;
-out vec3 normal_eyespace;
-out vec3 vertex_direction_eyespace;
-out vec3 lightdirection_eyespace;
+// Outputs to fragment shader
+out vec3 normal_worldspace;          // normal -> world space
+out vec3 normal_eyespace;            // normal -> eye space
+out vec3 vertex_direction_eyespace;  // fragment -> camera direction (eye space)
+out vec3 lightdirection_eyespace;    // fragment -> light direction (eye space)
 
-uniform mat4 mvp;
-uniform mat4 model;
-uniform mat4 view;
+// Transformation matrices
+uniform mat4 mvp;    // model -> view -> projection
+uniform mat4 model;  // model -> world
+uniform mat4 view;   // world -> eye (camera)
 
-void main() {
-    // output position of the vertex
+// Light position in world space
+uniform vec3 light_pos;
+
+void main()
+{
+    // Transform vertex position into clip space
     gl_Position = mvp * vec4(position, 1.0);
 
-    vec3 lightpos = vec3(0.0, 0.0, 100.0);
+    // ---- Position calculations ----
 
-    // calculate vertex-to-camera direction in eye space
-    vec3 position_eyespace = (view * model * vec4(position, 1.0)).xyz;
-    vertex_direction_eyespace = vec3(0,0,0) - position_eyespace;
+    // Vertex position in world space
+    vec3 position_world = (model * vec4(position, 1.0)).xyz;
 
-    // calculate light-to-vertex direction in eye space
-    vec3 position_worldspace = (model * vec4(position, 1.0)).xyz;
-    vec3 light_direction_worldspace = lightpos - position_worldspace.xyz;
-    lightdirection_eyespace = (view * vec4(light_direction_worldspace, 0.0)).xyz;
+    // Vertex position in eye space (camera at origin)
+    vec3 position_eye = (view * vec4(position_world, 1.0)).xyz;
 
-    // vertex normals in world and eye space
-    normal_worldspace = (transpose(inverse(model)) * vec4(normal, 0.0)).xyz;
-    normal_eyespace = (transpose(inverse(view * model)) * vec4(normal, 0.0)).xyz;
+    // Direction from vertex -> camera (eye space)
+    vertex_direction_eyespace = -position_eye;
+
+    // ---- Light direction ----
+
+    // Direction from vertex -> light (world space)
+    vec3 light_dir_world = light_pos - position_world;
+
+    // Convert light direction world -> eye space
+    // w = 0 → direction vector (ignore translation)
+    lightdirection_eyespace =
+        (view * vec4(light_dir_world, 0.0)).xyz;
+
+    // ---- Normal transformation ----
+
+    // Correct normal transform (handles non-uniform scaling)
+
+    // model -> world
+    normal_worldspace =
+        (transpose(inverse(model)) * vec4(normal, 0.0)).xyz;
+
+    // model -> eye
+    normal_eyespace =
+        (transpose(inverse(view * model)) * vec4(normal, 0.0)).xyz;
 }

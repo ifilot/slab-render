@@ -1,25 +1,9 @@
-/********************************************************************************
- * This file is part of Saucepan                                                *
- *                                                                              *
- * Author: Ivo Filot <i.a.w.filot@tue.nl>                                       *
- *                                                                              *
- * This program is free software; you can redistribute it and/or                *
- * modify it under the terms of the GNU Lesser General Public                   *
- * License as published by the Free Software Foundation; either                 *
- * version 3 of the License, or (at your option) any later version.             *
- *                                                                              *
- * This program is distributed in the hope that it will be useful,              *
- * but WITHOUT ANY WARRANTY; without even the implied warranty of               *
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU            *
- * Lesser General Public License for more details.                              *
- *                                                                              *
- * You should have received a copy of the GNU Lesser General Public License     *
- * along with this program; if not, write to the Free Software Foundation,      *
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.          *
- ********************************************************************************/
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// SlabRender
+// Author: Ivo Filot <ivo@ivofilot.nl>
 
-#ifndef MAINWINDOW_H
-#define MAINWINDOW_H
+
+#pragma once
 
 #include <QApplication>
 #include <QMainWindow>
@@ -49,13 +33,16 @@
 #include <QMessageBox>
 #include <QSplitter>
 #include <QTextCursor>
+#include <QSettings>
+#include <QJsonObject>
+#include <QColor>
 
 #include "jobinfowidget.h"
 #include "threadrenderimage.h"
 #include "logwindow.h"
 #include "config.h"
-#include "vendor/simpleson/json.h"
 #include "atom_settings.h"
+#include "render_atoms_widget.h"
 
 class MainWindow : public QMainWindow
 {
@@ -70,7 +57,6 @@ private:
     QPushButton* button_run_single_job;
     QPushButton* button_cancel;
     QPushButton* button_select_folder;
-    QPushButton* button_rebuild_structures;
     QProgressBar* progress_bar;
     QLabel* label_gpus;
 
@@ -82,18 +68,29 @@ private:
     QLabel* label_custom_ortho_scale;
     QDoubleSpinBox* spinbox_custom_ortho_scale;
     QComboBox* combobox_camera_direction;
+    QDoubleSpinBox* spinbox_custom_euler_x;
+    QDoubleSpinBox* spinbox_custom_euler_y;
+    QDoubleSpinBox* spinbox_custom_euler_z;
+    bool flag_block_custom_euler_sync = false;
     QCheckBox* checkbox_unitcell;
     QCheckBox* checkbox_expansion;
     QCheckBox* checkbox_axes;
     QSpinBox* spinbox_resolution_x;
     QSpinBox* spinbox_resolution_y;
-    QSpinBox* spinbox_tile_x;
-    QSpinBox* spinbox_tile_y;
     QSpinBox* spinbox_samples;
     QSpinBox* spinbox_nsubdiv;
     QComboBox* combobox_atom_material;
     QComboBox* combobox_bond_material;
-    QPlainTextEdit* plaintext_modding;
+    QPushButton* button_background_color;
+    QPushButton* button_light_left_color;
+    QPushButton* button_light_right_color;
+    QDoubleSpinBox* spinbox_light_left_intensity;
+    QDoubleSpinBox* spinbox_light_right_intensity;
+    QDoubleSpinBox* spinbox_light_left_area_size;
+    QDoubleSpinBox* spinbox_light_right_area_size;
+    QColor background_color = QColor(204, 204, 204);
+    QColor light_left_color = QColor(255, 255, 255);
+    QColor light_right_color = QColor(255, 255, 255);
     QLabel* label_valid_json;
 
     // storage for log messages
@@ -102,9 +99,12 @@ private:
     // window for log messages
     std::unique_ptr<LogWindow> log_window;
 
-    JobInfoWidget* widget_job_info;
+    RenderAtomsWidget* render_atoms_widget = nullptr;
+    QGroupBox* advanced_json_group = nullptr;
+    JobInfoWidget* widget_job_info = nullptr;
 
     QVector<unsigned int> job_status;
+    bool run_single_save_blend = false;
 
     enum {
         JOB_QUEUED,
@@ -117,18 +117,32 @@ private:
         "VASP Geometry (POSCAR*,CONTCAR*)",
         "ADF .log files (logfile)",
         "Gaussian .log files (*.log, *.LOG)",
+        "MKMCXX3 .mks files (*.mks)",
+        "PyMKMKit YAML files (*.yaml, *.yml)",
     };
 
 public:
     MainWindow(const std::shared_ptr<QStringList> _log_messages,
                QWidget *parent = nullptr);
+    /**
+     * @brief MainWindow.
+     */
     ~MainWindow();
 
 private:
+    /**
+     * @brief build_dropdown_menu.
+     */
     void build_dropdown_menu();
 
+    /**
+     * @brief build_blender_settings_panel.
+     */
     void build_blender_settings_panel(QVBoxLayout* layout);
 
+    /**
+     * @brief find_blender_executable.
+     */
     QStringList find_blender_executable();
 
     /**
@@ -136,41 +150,119 @@ private:
      */
     QStringList find_files(const QString& path, const QStringList& filenames);
 
+    /**
+     * @brief Find YAML files that match the PyMKMKit schema
+     */
+    QStringList find_pymkmkit_yaml_files(const QString& path);
+
+    /**
+     * @brief fetch_tooltip_text.
+     */
     QString fetch_tooltip_text(const QString& filename);
 
 private slots:
+    /**
+     * @brief slot_select_folder.
+     */
     void slot_select_folder();
 
+    /**
+     * @brief slot_parse_files.
+     */
     void slot_parse_files();
 
+    /**
+     * @brief slot_parse_single_job.
+     */
     void slot_parse_single_job();
 
-    void slot_check_valid_json();
+    /**
+     * @brief slot_parse_selected_job.
+     */
+    void slot_parse_selected_job(int jobid);
 
+    /**
+     * @brief slot_save_blend_selected_job.
+     */
+    void slot_save_blend_selected_job(int jobid);
+
+    /**
+     * @brief slot_job_start.
+     */
     void slot_job_start(int jobid);
 
+    /**
+     * @brief slot_job_done.
+     */
     void slot_job_done(int jobid);
 
+    /**
+     * @brief slot_queue_done.
+     */
     void slot_queue_done();
 
+    /**
+     * @brief slot_probe_gpu.
+     */
     void slot_probe_gpu();
 
+    /**
+     * @brief slot_change_ortho_scale.
+     */
     void slot_change_ortho_scale(int item_id);
 
-    void slot_set_zoom_level();
+    /**
+     * @brief slot_update_custom_zoom_level.
+     */
+    void slot_update_custom_zoom_level();
+    /**
+     * @brief slot_update_custom_euler.
+     */
+    void slot_update_custom_euler();
+    /**
+     * @brief slot_set_custom_euler.
+     */
+    void slot_set_custom_euler();
 
-    void slot_add_object_angles();
+    /**
+     * @brief slot_sync_atom_render_rules.
+     */
+    void slot_sync_atom_render_rules();
 
+    /**
+     * @brief slot_cancel_queue.
+     */
     void slot_cancel_queue();
 
+    /**
+     * @brief slot_queue_cancelled.
+     */
     void slot_queue_cancelled();
 
+    /**
+     * @brief slot_exit.
+     */
     void slot_exit();
 
+    /**
+     * @brief slot_debug_log.
+     */
     void slot_debug_log();
 
+    /**
+     * @brief slot_about.
+     */
     void slot_about();
 
-    void slot_rebuild_structures();
+    void slot_save_render_settings();
+    void slot_load_render_settings();
+
+private:
+    /**
+     * @brief build_custom_json.
+     */
+    QJsonObject build_custom_json() const;
+    QJsonObject collect_render_settings_json() const;
+    void apply_render_settings_json(const QJsonObject& settings);
+    void update_color_button_style(QPushButton* button, const QColor& color) const;
 };
-#endif // MAINWINDOW_H

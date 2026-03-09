@@ -1,3 +1,8 @@
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// SlabRender
+// Author: Ivo Filot <ivo@ivofilot.nl>
+
+
 /****************************************************************************
 #                                                                           #
 #    INORGANIC MATERIALS CHEMISTRY CONFIDENTIAL                             #

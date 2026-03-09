@@ -1,27 +1,11 @@
-/********************************************************************************
- * This file is part of Saucepan                                                *
- *                                                                              *
- * Author: Ivo Filot <i.a.w.filot@tue.nl>                                       *
- *                                                                              *
- * This program is free software; you can redistribute it and/or                *
- * modify it under the terms of the GNU Lesser General Public                   *
- * License as published by the Free Software Foundation; either                 *
- * version 3 of the License, or (at your option) any later version.             *
- *                                                                              *
- * This program is distributed in the hope that it will be useful,              *
- * but WITHOUT ANY WARRANTY; without even the implied warranty of               *
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU            *
- * Lesser General Public License for more details.                              *
- *                                                                              *
- * You should have received a copy of the GNU Lesser General Public License     *
- * along with this program; if not, write to the Free Software Foundation,      *
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.          *
- ********************************************************************************/
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// SlabRender
+// Author: Ivo Filot <ivo@ivofilot.nl>
+
 
 #pragma once
 
 #include <QFile>
-#include <QTemporaryDir>
 #include <QDebug>
 
 // boost headers
@@ -39,6 +23,7 @@
 #include <vector>
 #include <string>
 #include <unordered_map>
+#include <optional>
 
 #include <QVector3D>
 
@@ -48,12 +33,36 @@
 class AtomSettings {
 
 private:
-    std::string settings_file;
+    struct IndexedColorRule {
+        std::string element;
+        int from = 0;
+        int to = 0;
+        std::string color;
+    };
+
+    struct IndexedRadiusRule {
+        std::string element;
+        int from = 0;
+        int to = 0;
+        float radius = 1.0f;
+    };
+
+    struct BondDistanceRule {
+        std::string element_a;
+        std::string element_b;
+        float max_distance = 2.0f;
+    };
+
+private:
+    std::string settings_data;
     boost::property_tree::ptree root;
 
     std::vector<std::vector<double>> bond_distances;
     std::vector<float> radii;
     std::vector<QVector3D> colors;
+    std::vector<IndexedColorRule> atom_color_rules;
+    std::vector<IndexedRadiusRule> atom_radius_rules;
+    std::vector<BondDistanceRule> bond_distance_rules;
 
 public:
     /**
@@ -86,7 +95,7 @@ public:
      *
      * @return     atomic radius
      */
-    float get_atom_radius(const std::string& elname);
+    float get_atom_radius(const std::string& elname, unsigned int atom_index = 0) const;
 
     /**
      * @brief      Get the color of an element
@@ -95,7 +104,7 @@ public:
      *
      * @return     atomic radius
      */
-    std::string get_atom_color(const std::string& elname);
+    std::string get_atom_color(const std::string& elname, unsigned int atom_index = 0) const;
 
     /**
      * @brief      Get the atomic radius of an element
@@ -104,7 +113,7 @@ public:
      *
      * @return     atomic radius
      */
-    float get_atom_radius_from_elnr(unsigned int elnr);
+    float get_atom_radius_from_elnr(unsigned int elnr, unsigned int atom_index = 0) const;
 
     /**
      * @brief      Get element number of an element
@@ -113,7 +122,7 @@ public:
      *
      * @return     The atom elnr.
      */
-    unsigned int get_atom_elnr(const std::string& elname);
+    unsigned int get_atom_elnr(const std::string& elname) const;
 
     /**
      * @brief      Get the maximum bond distance between two atoms
@@ -123,7 +132,7 @@ public:
      *
      * @return     The bond distance.
      */
-    double get_bond_distance(int atoma, int atomb);
+    double get_bond_distance(int atoma, int atomb) const;
 
     /**
      * @brief      Gets the name from element number.
@@ -141,7 +150,7 @@ public:
      *
      * @return     The name from elnr.
      */
-    const QVector3D& get_atom_color_from_elnr(unsigned int elnr) const;
+    QVector3D get_atom_color_from_elnr(unsigned int elnr, unsigned int atom_index = 0) const;
 
 private:
     /**
@@ -154,7 +163,13 @@ private:
      */
     void load();
 
+    /**
+     * @brief hexcode_to_vector3d.
+     */
     QVector3D hexcode_to_vector3d(const std::string& hexcode) const;
+
+    std::optional<IndexedColorRule> find_atom_color_rule(const std::string& elname, unsigned int atom_index) const;
+    std::optional<IndexedRadiusRule> find_atom_radius_rule(const std::string& elname, unsigned int atom_index) const;
 
     // delete copy constructor
     AtomSettings(AtomSettings const&)          = delete;
