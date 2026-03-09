@@ -1017,7 +1017,6 @@ void MainWindow::slot_load_render_settings() {
 
 QJsonObject MainWindow::collect_render_settings_json() const {
     QJsonObject settings;
-    settings["blender_executable"] = this->combobox_blender_executable->currentText();
     settings["ortho_scale"] = this->combobox_ortho_scale->currentText();
     settings["ortho_custom_scale"] = this->spinbox_custom_ortho_scale->value();
     settings["camera_direction"] = this->combobox_camera_direction->currentText();
@@ -1050,14 +1049,6 @@ QJsonObject MainWindow::collect_render_settings_json() const {
 }
 
 void MainWindow::apply_render_settings_json(const QJsonObject& settings) {
-    const QString blenderExe = settings["blender_executable"].toString();
-    if(!blenderExe.isEmpty()) {
-        const int index = this->combobox_blender_executable->findText(blenderExe);
-        if(index >= 0) {
-            this->combobox_blender_executable->setCurrentIndex(index);
-        }
-    }
-
     const int orthoIndex = this->combobox_ortho_scale->findText(settings["ortho_scale"].toString());
     if(orthoIndex >= 0) this->combobox_ortho_scale->setCurrentIndex(orthoIndex);
     this->spinbox_custom_ortho_scale->setValue(settings["ortho_custom_scale"].toDouble(this->spinbox_custom_ortho_scale->value()));
