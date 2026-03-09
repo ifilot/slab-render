@@ -55,7 +55,6 @@ add_executable(slabrender WIN32
     src/structure.cpp
     src/structure_loader.cpp
     src/threadrenderimage.cpp
-    src/vendor/simpleson/json.cpp
     src/visualization/anaglyph_widget.cpp
     src/visualization/model.cpp
     src/visualization/model_loader.cpp

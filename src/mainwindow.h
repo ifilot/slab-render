@@ -41,7 +41,6 @@
 #include "threadrenderimage.h"
 #include "logwindow.h"
 #include "config.h"
-#include "vendor/simpleson/json.h"
 #include "atom_settings.h"
 #include "render_atoms_widget.h"
 
