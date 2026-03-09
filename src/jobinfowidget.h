@@ -27,6 +27,7 @@ private:
     QPushButton* button_open_path;
     QPushButton* button_save_image;
     QPushButton* button_render_single_file;
+    QPushButton* button_save_blend_file;
 
     QPlainTextEdit* text_job_info;
     QLabel* label_image;
@@ -65,6 +66,7 @@ public:
 
 signals:
     void signal_render_single_job_requested(int job_id);
+    void signal_save_blend_single_job_requested(int job_id);
 
 public slots:
     /**
@@ -92,4 +94,9 @@ private slots:
      * @brief slot_render_single_file.
      */
     void slot_render_single_file();
+
+    /**
+     * @brief slot_save_blend_single_file.
+     */
+    void slot_save_blend_single_file();
 };

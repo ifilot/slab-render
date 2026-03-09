@@ -89,6 +89,7 @@ MainWindow::MainWindow(const std::shared_ptr<QStringList> _log_messages, QWidget
     connect(this->widget_job_info->get_anaglyph_widget(), SIGNAL(signal_zoom_level()), this, SLOT(slot_update_custom_zoom_level()));
     connect(this->widget_job_info->get_anaglyph_widget(), SIGNAL(signal_object_angles()), this, SLOT(slot_update_custom_euler()));
     connect(this->widget_job_info, SIGNAL(signal_render_single_job_requested(int)), this, SLOT(slot_parse_selected_job(int)));
+    connect(this->widget_job_info, SIGNAL(signal_save_blend_single_job_requested(int)), this, SLOT(slot_save_blend_selected_job(int)));
 
     // set layout
     this->setMinimumWidth(1280);
@@ -514,6 +515,7 @@ void MainWindow::slot_parse_files() {
     }
 
     // launch queue
+    process_job_queue->set_render_mode(false);
     process_job_queue->set_parameters(parameters);
     process_job_queue->start();
 }
@@ -582,8 +584,10 @@ void MainWindow::slot_parse_single_job() {
     this->listview_items->item(jobid)->setIcon(icon);
 
     // launch queue
+    process_job_queue->set_render_mode(this->run_single_save_blend);
     process_job_queue->set_parameters(parameters);
     process_job_queue->start();
+    this->run_single_save_blend = false;
 }
 
 /**
@@ -594,6 +598,20 @@ void MainWindow::slot_parse_selected_job(int jobid) {
         return;
     }
 
+    this->run_single_save_blend = false;
+    this->listview_items->setCurrentRow(jobid);
+    this->slot_parse_single_job();
+}
+
+/**
+ * @brief slot_save_blend_selected_job.
+ */
+void MainWindow::slot_save_blend_selected_job(int jobid) {
+    if(jobid < 0 || jobid >= this->listview_items->count()) {
+        return;
+    }
+
+    this->run_single_save_blend = true;
     this->listview_items->setCurrentRow(jobid);
     this->slot_parse_single_job();
 }

@@ -36,6 +36,11 @@ JobInfoWidget::JobInfoWidget(QWidget *parent) : QTabWidget(parent) {
     this->button_render_single_file->setEnabled(false);
     connect(this->button_render_single_file, SIGNAL(released()), this, SLOT(slot_render_single_file()));
 
+    this->button_save_blend_file = new QPushButton("Save to .blend");
+    layout_button_container->addWidget(this->button_save_blend_file);
+    this->button_save_blend_file->setEnabled(false);
+    connect(this->button_save_blend_file, SIGNAL(released()), this, SLOT(slot_save_blend_single_file()));
+
     this->label_image = new QLabel();
     this->label_image->setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::MinimumExpanding);
     this->label_image->setAlignment (Qt::AlignCenter);
@@ -85,6 +90,7 @@ void JobInfoWidget::slot_update_job_info(int job_id) {
         this->label_job_path->setText(contcarpath);
         this->button_open_path->setEnabled(true);
         this->button_render_single_file->setEnabled(true);
+        this->button_save_blend_file->setEnabled(true);
 
         QString imagepath = this->get_expected_image_path(contcarpath);
         QFile imagefile(imagepath);
@@ -102,6 +108,7 @@ void JobInfoWidget::slot_update_job_info(int job_id) {
     } else {
         this->button_open_path->setEnabled(false);
         this->button_render_single_file->setEnabled(false);
+        this->button_save_blend_file->setEnabled(false);
     }
 }
 
@@ -159,5 +166,14 @@ void JobInfoWidget::slot_save_image() {
 void JobInfoWidget::slot_render_single_file() {
     if(this->current_job_id >= 0) {
         emit signal_render_single_job_requested(this->current_job_id);
+    }
+}
+
+/**
+ * @brief slot_save_blend_single_file.
+ */
+void JobInfoWidget::slot_save_blend_single_file() {
+    if(this->current_job_id >= 0) {
+        emit signal_save_blend_single_job_requested(this->current_job_id);
     }
 }

@@ -66,23 +66,41 @@ void ThreadRenderImage::run() {
                 // store output of job
                 this->output[i] = result;
 
-                // copy image back
-                QFile imagefile(process->workingDirectory() + "/image.png");
-                if(imagefile.open(QIODevice::ReadOnly)) {
-                    QFileInfo source_info(file);
-                    QString output_name = "image.png";
-                    if(source_info.suffix().compare("yaml", Qt::CaseInsensitive) == 0 ||
-                       source_info.suffix().compare("yml", Qt::CaseInsensitive) == 0 ||
-                       source_info.suffix().compare("mks", Qt::CaseInsensitive) == 0) {
-                        output_name = source_info.completeBaseName() + ".png";
-                    }
-                    QString storepath = source_info.absoluteDir().filePath(output_name);
+                QFileInfo source_info(file);
+                if(this->render_mode == RenderMode::SaveBlend) {
+                    QFile blendfile(process->workingDirectory() + "/saved.blend");
+                    if(blendfile.open(QIODevice::ReadOnly)) {
+                        QString output_name = "scene.blend";
+                        if(source_info.suffix().compare("yaml", Qt::CaseInsensitive) == 0 ||
+                           source_info.suffix().compare("yml", Qt::CaseInsensitive) == 0 ||
+                           source_info.suffix().compare("mks", Qt::CaseInsensitive) == 0) {
+                            output_name = source_info.completeBaseName() + ".blend";
+                        }
+                        QString storepath = source_info.absoluteDir().filePath(output_name);
 
-                    // remove existing file if it exists
-                    if(QFile::exists(storepath)) {
-                        QFile::remove(storepath);
+                        if(QFile::exists(storepath)) {
+                            QFile::remove(storepath);
+                        }
+                        blendfile.copy(storepath);
                     }
-                    imagefile.copy(storepath);
+                } else {
+                    // copy image back
+                    QFile imagefile(process->workingDirectory() + "/image.png");
+                    if(imagefile.open(QIODevice::ReadOnly)) {
+                        QString output_name = "image.png";
+                        if(source_info.suffix().compare("yaml", Qt::CaseInsensitive) == 0 ||
+                           source_info.suffix().compare("yml", Qt::CaseInsensitive) == 0 ||
+                           source_info.suffix().compare("mks", Qt::CaseInsensitive) == 0) {
+                            output_name = source_info.completeBaseName() + ".png";
+                        }
+                        QString storepath = source_info.absoluteDir().filePath(output_name);
+
+                        // remove existing file if it exists
+                        if(QFile::exists(storepath)) {
+                            QFile::remove(storepath);
+                        }
+                        imagefile.copy(storepath);
+                    }
                 }
 
                 // emit job done
@@ -112,7 +130,8 @@ void ThreadRenderImage::run() {
  */
 QProcess* ThreadRenderImage::build_process(const QString& contcarfile) {
     QString cwd = this->copy_template_files(contcarfile);
-    QStringList arguments = {"-b", "axes_template.blend", "-P", "render_image.py", "--", "manifest.json", "atompack.bin", cwd + "/image.png"};
+    const QString output_file = this->render_mode == RenderMode::SaveBlend ? (cwd + "/saved.blend") : (cwd + "/image.png");
+    QStringList arguments = {"-b", "axes_template.blend", "-P", "render_image.py", "--", "manifest.json", "atompack.bin", output_file, this->render_mode == RenderMode::SaveBlend ? "save_blend" : "render_image"};
     QProcess* blender_process = new QProcess();
     blender_process->setProgram(this->executable);
     blender_process->setArguments(arguments);

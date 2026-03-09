@@ -23,6 +23,11 @@ class ThreadRenderImage : public QThread
 {
     Q_OBJECT
 private:
+    enum class RenderMode {
+        RenderImage,
+        SaveBlend
+    };
+
     QStringList files;
 
     QString executable;
@@ -38,6 +43,8 @@ private:
     int single_job_id = -1;
 
     uint32_t principal_nr_atoms = 0;
+
+    RenderMode render_mode = RenderMode::RenderImage;
 
 public:
    /**
@@ -94,6 +101,13 @@ public:
      */
     inline void set_parameters(const QMap<QString, QVariant>& _parameters) {
         this->parameters = _parameters;
+    }
+
+    /**
+     * @brief set_render_mode.
+     */
+    inline void set_render_mode(bool save_blend) {
+        this->render_mode = save_blend ? RenderMode::SaveBlend : RenderMode::RenderImage;
     }
 
     /**

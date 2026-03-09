@@ -176,6 +176,7 @@ def main():
     inputfile = argv[0]
     binfile = argv[1]
     outfile = argv[2]
+    mode = argv[3] if len(argv) > 3 else "render_image"
     print("Reading: %s" % inputfile)
 
     print("Searching for GPUs")
@@ -217,8 +218,12 @@ def main():
     camera_object = build_camera(data, autoscale)
     set_main_light_settings(camera_object, autoscale, light_color, relative_light_intensity, light_area_size)
 
-    # run single image with just the geometry
-    run_render(outfile, data)
+    # run single image with just the geometry or save blender file
+    if mode == "save_blend":
+        bpy.ops.wm.save_as_mainfile(filepath=outfile)
+        print("Saved Blender file to %s" % outfile)
+    else:
+        run_render(outfile, data)
 
 def run_render(filename, data):
     scene = bpy.context.scene

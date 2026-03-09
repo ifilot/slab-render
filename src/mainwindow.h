@@ -100,6 +100,7 @@ private:
     JobInfoWidget* widget_job_info = nullptr;
 
     QVector<unsigned int> job_status;
+    bool run_single_save_blend = false;
 
     enum {
         JOB_QUEUED,
@@ -175,6 +176,11 @@ private slots:
      * @brief slot_parse_selected_job.
      */
     void slot_parse_selected_job(int jobid);
+
+    /**
+     * @brief slot_save_blend_selected_job.
+     */
+    void slot_save_blend_selected_job(int jobid);
 
     /**
      * @brief slot_job_start.
