@@ -170,7 +170,7 @@ QString ThreadRenderImage::copy_template_files(const QString& contcarfile) {
  * @brief create_atompack.
  */
 void ThreadRenderImage::create_atompack(const QString& path) {
-    qDebug() << "Converting CONTCAR to atompack.bin for " << path;
+    qDebug() << "Converting structure file to atompack.bin for " << path;
     try {
         auto structure = sl.load_file(path).back();
         structure->update();

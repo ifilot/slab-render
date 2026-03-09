@@ -15,6 +15,7 @@ from os.path import dirname
 import json
 import struct
 import bmesh
+from mathutils import Vector
 
 def set_material_subsurface(material_name, value):
     material = bpy.data.materials.get(material_name)
@@ -41,7 +42,29 @@ def set_material_subsurface(material_name, value):
     print("Material '%s' has no Subsurface/Subsurface Weight input" % material_name)
 
 
-def set_scene_background_black():
+def set_material_subsurface_color(material_name, color=(0.0, 0.0, 0.0, 1.0)):
+    material = bpy.data.materials.get(material_name)
+    if material is None:
+        print("Material '%s' not found, cannot set subsurface color" % material_name)
+        return
+
+    if not material.use_nodes or material.node_tree is None:
+        print("Material '%s' does not use nodes, cannot set subsurface color" % material_name)
+        return
+
+    principled = material.node_tree.nodes.get('Principled BSDF')
+    if principled is None:
+        print("Material '%s' has no Principled BSDF node" % material_name)
+        return
+
+    if 'Subsurface Color' in principled.inputs:
+        principled.inputs['Subsurface Color'].default_value = color
+        print("Set Subsurface Color for material '%s' to %s" % (material_name, color))
+    else:
+        print("Material '%s' has no Subsurface Color input" % material_name)
+
+
+def set_scene_background(background_color=None):
     world = bpy.context.scene.world
     if world is None:
         world = bpy.data.worlds.new('World')
@@ -53,8 +76,92 @@ def set_scene_background_black():
         print("No Background node found in world shader")
         return
 
-    background.inputs['Color'].default_value = (0.3, 0.3, 0.3, 1.0)
-    print('Set scene background color to dark gray')
+    current = tuple(background.inputs['Color'].default_value)
+    print('Current scene background color: %s' % (current,))
+
+    if background_color is None:
+        background_color = (0.3, 0.3, 0.3)
+
+    background.inputs['Color'].default_value = (
+        float(background_color[0]),
+        float(background_color[1]),
+        float(background_color[2]),
+        1.0,
+    )
+    print('Set scene background color to %s' % (background_color,))
+
+
+
+
+def parse_hex_color(color_str, fallback=(1.0, 1.0, 1.0)):
+    if not isinstance(color_str, str):
+        return fallback
+
+    value = color_str.strip()
+    if value.startswith('#'):
+        value = value[1:]
+
+    if len(value) != 6:
+        return fallback
+
+    try:
+        r = int(value[0:2], 16) / 255.0
+        g = int(value[2:4], 16) / 255.0
+        b = int(value[4:6], 16) / 255.0
+        return (r, g, b)
+    except ValueError:
+        return fallback
+
+
+def set_main_light_settings(camera_object, autoscale, light_color=None, relative_light_intensity=None, light_area_size=None):
+    light_name = 'SlabRenderAreaLight'
+
+    # remove all light objects (including Blender default startup light)
+    light_objects = [obj for obj in bpy.data.objects if obj.type == 'LIGHT']
+    for obj in light_objects:
+        bpy.data.objects.remove(obj, do_unlink=True)
+
+    light_data = bpy.data.lights.new(name=light_name, type='AREA')
+    light_data.shape = 'SQUARE'
+
+    if light_color is None:
+        light_color = (1.0, 1.0, 1.0)
+    if relative_light_intensity is None:
+        relative_light_intensity = 50.0
+    if light_area_size is None:
+        light_area_size = 25.0
+
+    light_data.color = (
+        float(light_color[0]),
+        float(light_color[1]),
+        float(light_color[2]),
+    )
+    light_data.size = max(0.01, float(light_area_size))
+    light_data.energy = float(relative_light_intensity) * (light_data.size ** 2)
+
+    light_object = bpy.data.objects.new(light_name, light_data)
+    bpy.context.scene.collection.objects.link(light_object)
+
+    cam_loc = Vector(camera_object.location)
+    cam_quat = camera_object.matrix_world.to_quaternion()
+    cam_forward = cam_quat @ Vector((0.0, 0.0, -1.0))
+    cam_right = cam_quat @ Vector((1.0, 0.0, 0.0))
+    cam_up = cam_quat @ Vector((0.0, 1.0, 0.0))
+
+    base_dist = max(float(autoscale) * 0.8, 8.0)
+    light_position = cam_loc + cam_forward * base_dist + cam_right * (0.45 * base_dist) + cam_up * (0.20 * base_dist)
+    light_object.location = light_position
+
+    look_vec = Vector((0.0, 0.0, 0.0)) - light_position
+    if look_vec.length > 1e-8:
+        light_object.rotation_euler = look_vec.to_track_quat('-Z', 'Y').to_euler()
+
+    print("Created area light '%s'" % light_name)
+    print('Set light color to %s' % (light_color,))
+    print('Set relative light intensity to %s' % relative_light_intensity)
+    print('Set light area size to %s' % light_data.size)
+    print('Computed light energy to %s' % light_data.energy)
+    print('Set light location to %s' % (tuple(light_object.location),))
 
 
 def set_film_transparent(enabled=True):
@@ -79,9 +186,16 @@ def main():
     print('Render settings:')
     print(data)
 
+    scene_background_color = parse_hex_color(data.get('scene_background_color', '#CCCCCC'), (0.8, 0.8, 0.8))
+    light_color = parse_hex_color(data.get('light_color', '#FFFFFF'), (1.0, 1.0, 1.0))
+    relative_light_intensity = data.get('relative_light_intensity', data.get('light_intensity', 50.0))
+    light_area_size = data.get('light_area_size', 25.0)
+
     set_material_subsurface('specular', 0.3)
     set_material_subsurface('soft', 0.3)
-    set_scene_background_black()
+    set_material_subsurface_color('specular', (0.0, 0.0, 0.0, 1.0))
+    set_material_subsurface_color('soft', (0.0, 0.0, 0.0, 1.0))
+    set_scene_background(scene_background_color)
     set_film_transparent(True)
 
     if 'hide_axes' in data.keys():
@@ -100,7 +214,8 @@ def main():
         show_unitcell(matrix, data)
 
     # add a camera
-    build_camera(data, autoscale)
+    camera_object = build_camera(data, autoscale)
+    set_main_light_settings(camera_object, autoscale, light_color, relative_light_intensity, light_area_size)
 
     # run single image with just the geometry
     run_render(outfile, data)
@@ -392,6 +507,7 @@ def build_camera(data, autoscale):
         camera_object.data.ortho_scale = float(data['ortho_scale'])
     print("Setting camera ortho scale to %f" % camera_object.data.ortho_scale)
     camera_object.data.clip_end = 1000
+    return camera_object
 
 def build_atoms(atoms, lib, data):
     """

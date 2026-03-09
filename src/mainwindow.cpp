@@ -3,6 +3,7 @@
 // Author: Ivo Filot <ivo@ivofilot.nl>
 
 #include "mainwindow.h"
+#include "color_picker_dialog.h"
 
 #include <QJsonDocument>
 #include <QJsonParseError>
@@ -64,6 +65,7 @@ MainWindow::MainWindow(const std::shared_ptr<QStringList> _log_messages, QWidget
     layout_buttons->addWidget(this->button_parse_files);
     this->button_run_single_job = new QPushButton("Run single job");
     layout_buttons->addWidget(this->button_run_single_job);
+    this->button_run_single_job->setEnabled(false);
     this->button_parse_files->setEnabled(false);
     this->button_cancel = new QPushButton("Cancel");
     layout_buttons->addWidget(this->button_cancel);
@@ -81,6 +83,9 @@ MainWindow::MainWindow(const std::shared_ptr<QStringList> _log_messages, QWidget
     connect(this->listview_items, SIGNAL(currentRowChanged(int)), this->widget_job_info->get_anaglyph_widget(), SLOT(slot_load_structure(int)));
     connect(this->listview_items, SIGNAL(currentRowChanged(int)), this, SLOT(slot_update_custom_euler()));
     connect(this->listview_items, SIGNAL(currentRowChanged(int)), this, SLOT(slot_update_custom_zoom_level()));
+    connect(this->listview_items, &QListWidget::currentRowChanged, this, [this](int row) {
+        this->button_run_single_job->setEnabled(row >= 0);
+    });
     connect(this->widget_job_info->get_anaglyph_widget(), SIGNAL(signal_zoom_level()), this, SLOT(slot_update_custom_zoom_level()));
     connect(this->widget_job_info->get_anaglyph_widget(), SIGNAL(signal_object_angles()), this, SLOT(slot_update_custom_euler()));
     connect(this->widget_job_info, SIGNAL(signal_render_single_job_requested(int)), this, SLOT(slot_parse_selected_job(int)));
@@ -314,6 +319,54 @@ void MainWindow::build_blender_settings_panel(QVBoxLayout* layout) {
     layout_blender_settings->addWidget(this->combobox_bond_material, rownr, 1);
     this->combobox_bond_material->setCurrentIndex(1);
 
+    rownr++;
+    layout_blender_settings->addWidget(new QLabel("Background color"), rownr, 0);
+    this->button_background_color = new QPushButton();
+    this->button_background_color->setText(this->background_color.name(QColor::HexRgb).toUpper());
+    this->update_color_button_style(this->button_background_color, this->background_color);
+    layout_blender_settings->addWidget(this->button_background_color, rownr, 1);
+    connect(this->button_background_color, &QPushButton::released, this, [this]() {
+        ColorPickerDialog dlg(this->background_color, this);
+        if(dlg.exec() == QDialog::Accepted) {
+            this->background_color = dlg.color();
+            this->button_background_color->setText(this->background_color.name(QColor::HexRgb).toUpper());
+            this->update_color_button_style(this->button_background_color, this->background_color);
+        }
+    });
+
+    rownr++;
+    layout_blender_settings->addWidget(new QLabel("Light color"), rownr, 0);
+    this->button_light_color = new QPushButton();
+    this->button_light_color->setText(this->light_color.name(QColor::HexRgb).toUpper());
+    this->update_color_button_style(this->button_light_color, this->light_color);
+    layout_blender_settings->addWidget(this->button_light_color, rownr, 1);
+    connect(this->button_light_color, &QPushButton::released, this, [this]() {
+        ColorPickerDialog dlg(this->light_color, this);
+        if(dlg.exec() == QDialog::Accepted) {
+            this->light_color = dlg.color();
+            this->button_light_color->setText(this->light_color.name(QColor::HexRgb).toUpper());
+            this->update_color_button_style(this->button_light_color, this->light_color);
+        }
+    });
+
+    rownr++;
+    layout_blender_settings->addWidget(new QLabel("Relative light intensity"), rownr, 0);
+    this->spinbox_light_intensity = new QDoubleSpinBox();
+    this->spinbox_light_intensity->setRange(0.0, 100000.0);
+    this->spinbox_light_intensity->setDecimals(2);
+    this->spinbox_light_intensity->setSingleStep(0.1);
+    this->spinbox_light_intensity->setValue(50.0);
+    layout_blender_settings->addWidget(this->spinbox_light_intensity, rownr, 1);
+
+    rownr++;
+    layout_blender_settings->addWidget(new QLabel("Light area size"), rownr, 0);
+    this->spinbox_light_area_size = new QDoubleSpinBox();
+    this->spinbox_light_area_size->setRange(0.01, 10000.0);
+    this->spinbox_light_area_size->setDecimals(2);
+    this->spinbox_light_area_size->setSingleStep(0.1);
+    this->spinbox_light_area_size->setValue(25.0);
+    layout_blender_settings->addWidget(this->spinbox_light_area_size, rownr, 1);
+
     // --- Custom atom rendering rules ---
     rownr++;
     layout_blender_settings->addWidget(new QLabel("Custom atom rendering"), rownr, 0);
@@ -332,6 +385,13 @@ void MainWindow::build_blender_settings_panel(QVBoxLayout* layout) {
 
 MainWindow::~MainWindow()
 {
+}
+
+
+void MainWindow::update_color_button_style(QPushButton* button, const QColor& color) const {
+    const double luminance = 0.299 * color.redF() + 0.587 * color.greenF() + 0.114 * color.blueF();
+    const QString textColor = luminance > 0.5 ? "#000000" : "#FFFFFF";
+    button->setStyleSheet(QString("QPushButton { background-color: %1; color: %2; }").arg(color.name(), textColor));
 }
 
 /**
@@ -441,6 +501,10 @@ void MainWindow::slot_parse_files() {
     parameters.insert("nsubdiv", QVariant(this->spinbox_nsubdiv->value()));
     parameters.insert("atmat", QVariant(this->combobox_atom_material->currentText()));
     parameters.insert("bondmat", QVariant(this->combobox_bond_material->currentText()));
+    parameters.insert("scene_background_color", QVariant(this->background_color.name(QColor::HexRgb)));
+    parameters.insert("light_color", QVariant(this->light_color.name(QColor::HexRgb)));
+    parameters.insert("relative_light_intensity", QVariant(this->spinbox_light_intensity->value()));
+    parameters.insert("light_area_size", QVariant(this->spinbox_light_area_size->value()));
     parameters.insert("custom_json", QVariant(QString(QJsonDocument(this->build_custom_json()).toJson(QJsonDocument::Indented))));
 
     // set icon when jobs are in queue
@@ -473,6 +537,16 @@ void MainWindow::slot_parse_single_job() {
     this->progress_bar->setMaximum(1);
 
     int jobid = this->listview_items->currentRow();
+    if(jobid < 0 || jobid >= this->listview_items->count()) {
+        QMessageBox::warning(this,
+                             tr("No job selected"),
+                             tr("Please select a job from the queue before running a single job."));
+        this->button_parse_files->setEnabled(true);
+        this->button_select_folder->setEnabled(true);
+        this->button_run_single_job->setEnabled(this->listview_items->count() > 0);
+        this->button_cancel->setVisible(false);
+        return;
+    }
     this->process_job_queue->set_single_job_id(jobid);
 
     // connect signals and slots
@@ -497,6 +571,10 @@ void MainWindow::slot_parse_single_job() {
     parameters.insert("nsubdiv", QVariant(this->spinbox_nsubdiv->value()));
     parameters.insert("atmat", QVariant(this->combobox_atom_material->currentText()));
     parameters.insert("bondmat", QVariant(this->combobox_bond_material->currentText()));
+    parameters.insert("scene_background_color", QVariant(this->background_color.name(QColor::HexRgb)));
+    parameters.insert("light_color", QVariant(this->light_color.name(QColor::HexRgb)));
+    parameters.insert("relative_light_intensity", QVariant(this->spinbox_light_intensity->value()));
+    parameters.insert("light_area_size", QVariant(this->spinbox_light_area_size->value()));
     parameters.insert("custom_json", QVariant(QString(QJsonDocument(this->build_custom_json()).toJson(QJsonDocument::Indented))));
 
     // set icon when jobs are in queue
@@ -586,6 +664,7 @@ void MainWindow::slot_select_folder() {
         );
 
         button_parse_files->setEnabled(false);
+        button_run_single_job->setEnabled(false);
         widget_job_info->get_anaglyph_widget()->set_structure_paths({});
         return;
     }
@@ -601,6 +680,13 @@ void MainWindow::slot_select_folder() {
     }
 
     widget_job_info->get_anaglyph_widget()->set_structure_paths(files);
+
+    if(this->listview_items->count() > 0) {
+        this->listview_items->setCurrentRow(0);
+        this->button_run_single_job->setEnabled(true);
+    } else {
+        this->button_run_single_job->setEnabled(false);
+    }
 
     button_parse_files->setEnabled(true);
 
@@ -806,6 +892,11 @@ QJsonObject MainWindow::build_custom_json() const {
             .arg(euler[2], 0, 'f', 6);
     }
 
+    root["scene_background_color"] = this->background_color.name(QColor::HexRgb);
+    root["light_color"] = this->light_color.name(QColor::HexRgb);
+    root["relative_light_intensity"] = this->spinbox_light_intensity->value();
+    root["light_area_size"] = this->spinbox_light_area_size->value();
+
     return root;
 }
 
@@ -876,6 +967,10 @@ QJsonObject MainWindow::collect_render_settings_json() const {
     settings["nsubdiv"] = this->spinbox_nsubdiv->value();
     settings["atom_material"] = this->combobox_atom_material->currentText();
     settings["bond_material"] = this->combobox_bond_material->currentText();
+    settings["scene_background_color"] = this->background_color.name(QColor::HexRgb);
+    settings["light_color"] = this->light_color.name(QColor::HexRgb);
+    settings["relative_light_intensity"] = this->spinbox_light_intensity->value();
+    settings["light_area_size"] = this->spinbox_light_area_size->value();
     settings["custom_rules"] = this->build_custom_json();
 
     QJsonObject root;
@@ -920,6 +1015,25 @@ void MainWindow::apply_render_settings_json(const QJsonObject& settings) {
     if(atomMatIndex >= 0) this->combobox_atom_material->setCurrentIndex(atomMatIndex);
     const int bondMatIndex = this->combobox_bond_material->findText(settings["bond_material"].toString());
     if(bondMatIndex >= 0) this->combobox_bond_material->setCurrentIndex(bondMatIndex);
+
+    const QColor loadedBackground(settings["scene_background_color"].toString(this->background_color.name(QColor::HexRgb)));
+    if(loadedBackground.isValid()) {
+        this->background_color = loadedBackground;
+        this->button_background_color->setText(this->background_color.name(QColor::HexRgb).toUpper());
+        this->update_color_button_style(this->button_background_color, this->background_color);
+    }
+
+    const QColor loadedLight(settings["light_color"].toString(this->light_color.name(QColor::HexRgb)));
+    if(loadedLight.isValid()) {
+        this->light_color = loadedLight;
+        this->button_light_color->setText(this->light_color.name(QColor::HexRgb).toUpper());
+        this->update_color_button_style(this->button_light_color, this->light_color);
+    }
+    const QJsonValue relIntensity = settings.contains("relative_light_intensity")
+        ? settings["relative_light_intensity"]
+        : settings["light_intensity"];
+    this->spinbox_light_intensity->setValue(relIntensity.toDouble(this->spinbox_light_intensity->value()));
+    this->spinbox_light_area_size->setValue(settings["light_area_size"].toDouble(this->spinbox_light_area_size->value()));
 
     if(settings["custom_rules"].isObject()) {
         this->render_atoms_widget->load_from_json(settings["custom_rules"].toObject());

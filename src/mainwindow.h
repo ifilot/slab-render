@@ -35,6 +35,7 @@
 #include <QTextCursor>
 #include <QSettings>
 #include <QJsonObject>
+#include <QColor>
 
 #include "jobinfowidget.h"
 #include "threadrenderimage.h"
@@ -81,6 +82,12 @@ private:
     QSpinBox* spinbox_nsubdiv;
     QComboBox* combobox_atom_material;
     QComboBox* combobox_bond_material;
+    QPushButton* button_background_color;
+    QPushButton* button_light_color;
+    QDoubleSpinBox* spinbox_light_intensity;
+    QDoubleSpinBox* spinbox_light_area_size;
+    QColor background_color = QColor(204, 204, 204);
+    QColor light_color = QColor(255, 255, 255);
     QLabel* label_valid_json;
 
     // storage for log messages
@@ -248,4 +255,5 @@ private:
     QJsonObject build_custom_json() const;
     QJsonObject collect_render_settings_json() const;
     void apply_render_settings_json(const QJsonObject& settings);
+    void update_color_button_style(QPushButton* button, const QColor& color) const;
 };
