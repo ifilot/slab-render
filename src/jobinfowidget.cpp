@@ -117,7 +117,8 @@ QString JobInfoWidget::get_expected_image_path(const QString& filepath) const {
     const QString suffix = file_info.suffix();
     if(suffix.compare("yaml", Qt::CaseInsensitive) == 0 ||
        suffix.compare("yml", Qt::CaseInsensitive) == 0 ||
-       suffix.compare("mks", Qt::CaseInsensitive) == 0) {
+       suffix.compare("mks", Qt::CaseInsensitive) == 0 ||
+       suffix.compare("xyz", Qt::CaseInsensitive) == 0) {
         return file_info.absoluteDir().filePath(file_info.completeBaseName() + ".png");
     }
 

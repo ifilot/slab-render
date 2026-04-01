@@ -119,17 +119,17 @@ private:
     /**
      * @brief build_process.
      */
-    QProcess* build_process(const QString& executable);
+    QProcess* build_process(const QString& working_directory);
 
     /**
      * @brief copy_template_files.
      */
-    QString copy_template_files(const QString& contcarfile);
+    QString copy_template_files();
 
     /**
      * @brief create_atompack.
      */
-    void create_atompack(const QString& contcarpath);
+    void create_atompack(const QString& structure_path, const QString& output_path);
 
     /**
      * @brief build_manifest_file.

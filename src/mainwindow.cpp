@@ -712,6 +712,8 @@ void MainWindow::slot_select_folder() {
         files = find_files(path, {"*.mks", "*.MKS"});
     } else if (type == GEOMETRY_FILETYPES[4]) {       // PyMKMKit YAML files
         files = find_pymkmkit_yaml_files(path);
+    } else if (type == GEOMETRY_FILETYPES[5]) {       // XYZ files
+        files = find_files(path, {"*.xyz", "*.XYZ"});
     } else {
         throw std::runtime_error("Invalid selection. Terminating program.");
     }
@@ -1017,12 +1019,13 @@ void MainWindow::slot_load_render_settings() {
 
 QJsonObject MainWindow::collect_render_settings_json() const {
     QJsonObject settings;
+    const QVector3D euler = this->widget_job_info->get_anaglyph_widget()->get_euler_angles();
     settings["ortho_scale"] = this->combobox_ortho_scale->currentText();
     settings["ortho_custom_scale"] = this->spinbox_custom_ortho_scale->value();
     settings["camera_direction"] = this->combobox_camera_direction->currentText();
-    settings["custom_euler_x"] = this->spinbox_custom_euler_x->value();
-    settings["custom_euler_y"] = this->spinbox_custom_euler_y->value();
-    settings["custom_euler_z"] = this->spinbox_custom_euler_z->value();
+    settings["custom_euler_x"] = euler.x();
+    settings["custom_euler_y"] = euler.y();
+    settings["custom_euler_z"] = euler.z();
     settings["show_unitcell"] = this->checkbox_unitcell->isChecked();
     settings["expansion"] = this->checkbox_expansion->isChecked();
     settings["hide_axes"] = this->checkbox_axes->isChecked();
@@ -1061,6 +1064,10 @@ void MainWindow::apply_render_settings_json(const QJsonObject& settings) {
     this->spinbox_custom_euler_y->setValue(settings["custom_euler_y"].toDouble(this->spinbox_custom_euler_y->value()));
     this->spinbox_custom_euler_z->setValue(settings["custom_euler_z"].toDouble(this->spinbox_custom_euler_z->value()));
     this->flag_block_custom_euler_sync = false;
+    this->widget_job_info->get_anaglyph_widget()->set_euler_angles(
+        QVector3D(this->spinbox_custom_euler_x->value(),
+                  this->spinbox_custom_euler_y->value(),
+                  this->spinbox_custom_euler_z->value()));
 
     this->checkbox_unitcell->setChecked(settings["show_unitcell"].toBool(this->checkbox_unitcell->isChecked()));
     this->checkbox_expansion->setChecked(settings["expansion"].toBool(this->checkbox_expansion->isChecked()));
@@ -1113,10 +1120,6 @@ void MainWindow::apply_render_settings_json(const QJsonObject& settings) {
 
     if(settings["custom_rules"].isObject()) {
         this->render_atoms_widget->load_from_json(settings["custom_rules"].toObject());
-    }
-
-    if(this->combobox_camera_direction->currentText() == "custom") {
-        this->slot_set_custom_euler();
     }
 
     this->slot_sync_atom_render_rules();
