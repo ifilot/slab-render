@@ -104,6 +104,15 @@ public:
     std::vector<std::shared_ptr<Structure>> load_mks(const std::string& filename);
 
     /**
+     * @brief      Load structure from XYZ file
+     *
+     * @param[in]  filename  The filename
+     *
+     * @return     Structure
+     */
+    std::vector<std::shared_ptr<Structure>> load_xyz(const std::string& filename);
+
+    /**
      * @brief      Validate whether a YAML file follows the PyMKMKit structure schema
      *
      * @param[in]  filename  The filename

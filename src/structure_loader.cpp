@@ -4,6 +4,7 @@
 
 #include "structure_loader.h"
 #include <QFileInfo>
+#include <limits>
 #include <yaml-cpp/yaml.h>
 
 /**
@@ -38,6 +39,9 @@ std::vector<std::shared_ptr<Structure>> StructureLoader::load_file(const QString
             throw std::runtime_error("Invalid PyMKMKit YAML file: missing 'pymkmkit' and/or 'structure' root elements.");
         }
         return this->load_pymkmkit_yaml(path.toStdString());
+    } else if (filename.endsWith(".xyz") || filename.endsWith(".XYZ")) {
+        qDebug() << "Recognising file as XYZ type:" << path;
+        return this->load_xyz(path.toStdString());
     } else {
         throw std::runtime_error("Unknown file type: " + filename.toStdString());
     }
@@ -886,6 +890,105 @@ std::vector<std::shared_ptr<Structure>> StructureLoader::load_mks(const std::str
     }
 
     infile.close();
+
+    return { structure };
+}
+
+/**
+ * @brief      Load structure from XYZ file
+ *
+ * @param[in]  filename  The filename
+ *
+ * @return     Structure
+ */
+std::vector<std::shared_ptr<Structure>> StructureLoader::load_xyz(const std::string& filename) {
+    std::ifstream infile(filename);
+    if(!infile.is_open()) {
+        throw std::runtime_error("Could not open " + filename);
+    }
+
+    std::string line;
+    if(!std::getline(infile, line)) {
+        throw std::runtime_error("Invalid XYZ file: missing atom count line.");
+    }
+
+    boost::trim(line);
+    unsigned int nr_atoms = 0;
+    try {
+        nr_atoms = boost::lexical_cast<unsigned int>(line);
+    } catch(const boost::bad_lexical_cast&) {
+        throw std::runtime_error("Invalid XYZ file: first line must be a positive integer atom count.");
+    }
+
+    if(nr_atoms == 0) {
+        throw std::runtime_error("Invalid XYZ file: atom count must be > 0.");
+    }
+
+    // Comment/title line.
+    std::getline(infile, line);
+
+    struct ParsedAtom {
+        unsigned int elid;
+        double x;
+        double y;
+        double z;
+    };
+
+    std::vector<ParsedAtom> parsed_atoms;
+    parsed_atoms.reserve(nr_atoms);
+
+    double xmin = std::numeric_limits<double>::infinity();
+    double ymin = std::numeric_limits<double>::infinity();
+    double zmin = std::numeric_limits<double>::infinity();
+    double xmax = -std::numeric_limits<double>::infinity();
+    double ymax = -std::numeric_limits<double>::infinity();
+    double zmax = -std::numeric_limits<double>::infinity();
+
+    static const boost::regex regex_atom(
+        "^\\s*([A-Za-z]+)\\s+([0-9eE.+-]+)\\s+([0-9eE.+-]+)\\s+([0-9eE.+-]+)(?:\\s+.*)?$"
+    );
+
+    for(unsigned int i = 0; i < nr_atoms; i++) {
+        if(!std::getline(infile, line)) {
+            throw std::runtime_error("Invalid XYZ file: fewer atom lines than declared atom count.");
+        }
+
+        boost::smatch what;
+        if(!boost::regex_match(line, what, regex_atom)) {
+            throw std::runtime_error("Invalid XYZ atom line: " + line);
+        }
+
+        const unsigned int elid = AtomSettings::get().get_atom_elnr(what[1]);
+        const double x = boost::lexical_cast<double>(what[2]);
+        const double y = boost::lexical_cast<double>(what[3]);
+        const double z = boost::lexical_cast<double>(what[4]);
+
+        parsed_atoms.push_back({elid, x, y, z});
+
+        xmin = std::min(xmin, x);
+        ymin = std::min(ymin, y);
+        zmin = std::min(zmin, z);
+        xmax = std::max(xmax, x);
+        ymax = std::max(ymax, y);
+        zmax = std::max(zmax, z);
+    }
+
+    const double vacuum_padding = 10.0; // Å per Cartesian direction on each side.
+    MatrixUnitcell unitcell = MatrixUnitcell::Zero(3, 3);
+    unitcell(0,0) = (xmax - xmin) + 2.0 * vacuum_padding;
+    unitcell(1,1) = (ymax - ymin) + 2.0 * vacuum_padding;
+    unitcell(2,2) = (zmax - zmin) + 2.0 * vacuum_padding;
+
+    // Use localized=true so updates keep geometric centering.
+    auto structure = std::make_shared<Structure>(unitcell, true);
+
+    const double cx = (xmin + xmax) / 2.0;
+    const double cy = (ymin + ymax) / 2.0;
+    const double cz = (zmin + zmax) / 2.0;
+
+    for(const auto& atom : parsed_atoms) {
+        structure->add_atom(atom.elid, atom.x - cx, atom.y - cy, atom.z - cz);
+    }
 
     return { structure };
 }

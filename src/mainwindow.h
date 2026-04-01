@@ -119,6 +119,7 @@ private:
         "Gaussian .log files (*.log, *.LOG)",
         "MKMCXX3 .mks files (*.mks)",
         "PyMKMKit YAML files (*.yaml, *.yml)",
+        "XYZ files (*.xyz, *.XYZ)",
     };
 
 public:

@@ -36,8 +36,9 @@ void ThreadRenderImage::run() {
 
         const QString& file = this->files[i];
         qDebug() << "Parsing: " << file;
-        this->create_atompack(file);
-        QProcess* process = this->build_process(file);
+        const QString working_dir = this->copy_template_files();
+        this->create_atompack(file, working_dir + "/atompack.bin");
+        QProcess* process = this->build_process(working_dir);
 
         // emit job start
         emit(signal_job_start(i));
@@ -73,7 +74,8 @@ void ThreadRenderImage::run() {
                         QString output_name = "scene.blend";
                         if(source_info.suffix().compare("yaml", Qt::CaseInsensitive) == 0 ||
                            source_info.suffix().compare("yml", Qt::CaseInsensitive) == 0 ||
-                           source_info.suffix().compare("mks", Qt::CaseInsensitive) == 0) {
+                           source_info.suffix().compare("mks", Qt::CaseInsensitive) == 0 ||
+                           source_info.suffix().compare("xyz", Qt::CaseInsensitive) == 0) {
                             output_name = source_info.completeBaseName() + ".blend";
                         }
                         QString storepath = source_info.absoluteDir().filePath(output_name);
@@ -90,7 +92,8 @@ void ThreadRenderImage::run() {
                         QString output_name = "image.png";
                         if(source_info.suffix().compare("yaml", Qt::CaseInsensitive) == 0 ||
                            source_info.suffix().compare("yml", Qt::CaseInsensitive) == 0 ||
-                           source_info.suffix().compare("mks", Qt::CaseInsensitive) == 0) {
+                           source_info.suffix().compare("mks", Qt::CaseInsensitive) == 0 ||
+                           source_info.suffix().compare("xyz", Qt::CaseInsensitive) == 0) {
                             output_name = source_info.completeBaseName() + ".png";
                         }
                         QString storepath = source_info.absoluteDir().filePath(output_name);
@@ -128,15 +131,14 @@ void ThreadRenderImage::run() {
 /**
  * @brief build_process.
  */
-QProcess* ThreadRenderImage::build_process(const QString& contcarfile) {
-    QString cwd = this->copy_template_files(contcarfile);
-    const QString output_file = this->render_mode == RenderMode::SaveBlend ? (cwd + "/saved.blend") : (cwd + "/image.png");
+QProcess* ThreadRenderImage::build_process(const QString& working_directory) {
+    const QString output_file = this->render_mode == RenderMode::SaveBlend ? (working_directory + "/saved.blend") : (working_directory + "/image.png");
     QStringList arguments = {"-b", "axes_template.blend", "-P", "render_image.py", "--", "manifest.json", "atompack.bin", output_file, this->render_mode == RenderMode::SaveBlend ? "save_blend" : "render_image"};
     QProcess* blender_process = new QProcess();
     blender_process->setProgram(this->executable);
     blender_process->setArguments(arguments);
     blender_process->setProcessChannelMode(QProcess::SeparateChannels);
-    blender_process->setWorkingDirectory(cwd);
+    blender_process->setWorkingDirectory(working_directory);
 
     return blender_process;
 }
@@ -144,7 +146,7 @@ QProcess* ThreadRenderImage::build_process(const QString& contcarfile) {
 /**
  * @brief copy_template_files.
  */
-QString ThreadRenderImage::copy_template_files(const QString& contcarfile) {
+QString ThreadRenderImage::copy_template_files() {
     QTemporaryDir dir;
     dir.setAutoRemove(false); // do not immediately remove
     if(dir.isValid()) {
@@ -154,13 +156,6 @@ QString ThreadRenderImage::copy_template_files(const QString& contcarfile) {
             throw std::runtime_error("Could not open blender file from assets.");
         }
         blenderfile.copy(dir.path() + "/axes_template.blend");
-
-        // copy atompack.bin
-        QString atompackpath = QFileInfo(contcarfile).absoluteDir().path() + "/atompack.bin";
-        QFile atompackfile(atompackpath);
-        if(atompackfile.open(QIODevice::ReadOnly)) {
-            atompackfile.copy(dir.path() + "/atompack.bin");
-        }
 
         // write Python file containing Blender instructions
         QFile pythonfile(":/assets/blender/render_image.py");
@@ -188,18 +183,17 @@ QString ThreadRenderImage::copy_template_files(const QString& contcarfile) {
 /**
  * @brief create_atompack.
  */
-void ThreadRenderImage::create_atompack(const QString& path) {
-    qDebug() << "Converting structure file to atompack.bin for " << path;
+void ThreadRenderImage::create_atompack(const QString& structure_path, const QString& output_path) {
+    qDebug() << "Converting structure file to atompack.bin for " << structure_path;
     try {
-        auto structure = sl.load_file(path).back();
+        auto structure = sl.load_file(structure_path).back();
         structure->update();
 
         // ToDo: Convert to Qt based file handling routines
 
         // writing results to file
-        auto storepath = QFileInfo(path).absoluteDir().path() + "/atompack.bin";
-        qDebug() << "Storing " << storepath;
-        std::ofstream out(storepath.toStdString(), std::ios::out | std::ios::binary);
+        qDebug() << "Storing " << output_path;
+        std::ofstream out(output_path.toStdString(), std::ios::out | std::ios::binary);
 
         // write unit cell
         MatrixUnitcell mat = structure->get_unitcell();
